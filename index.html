@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ordem Paranormal - Skill Tree</title>
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Mukta:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="h-full">
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <h1 class="login-title">Login</h1>
+      <p class="login-subtitle">Entre para acessar sua árvore de habilidades</p>
+
+      <input id="email" class="login-input" placeholder="Email" />
+      <input id="password" type="password" class="login-input" placeholder="Senha" />
+
+      <button onclick="login()" class="login-button">Entrar</button>
+      <p id="login-error" class="login-error"></p>
+    </div>
+  </div>
+
+  <div id="app" class="h-full flex flex-col overflow-auto scroll-container hidden">
+    <header class="p-4 md:p-6 text-center flex-shrink-0 app-header">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1 id="page-title" class="page-title">Árvore de Habilidades</h1>
+          <p id="user-label" class="user-label"></p>
+        </div>
+        <div class="topbar-right">
+          <div id="admin-panel" class="hidden admin-panel">
+            <label for="player-select" class="admin-label">Jogador:</label>
+            <select id="player-select" onchange="loadSelectedPlayer()" class="admin-select"></select>
+          </div>
+          <button onclick="logout()" class="logout-btn">Sair</button>
+        </div>
+      </div>
+      <p class="header-subtitle">Selecione um elemento para visualizar as habilidades</p>
+    </header>
+
+    <nav class="flex-shrink-0 px-4 pb-4">
+      <div class="flex gap-2 overflow-x-auto scroll-container justify-center flex-wrap" id="tabs-container"></div>
+    </nav>
+
+    <main class="flex-1 px-4 pb-8 overflow-auto scroll-container" id="main-content"></main>
+  </div>
+
+  <script src="skills-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
