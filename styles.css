@@ -4,7 +4,7 @@ html, body {
 }
 
 body {
-  font-family: 'Mukta', sans-serif;
+  font-family: 'Inter', sans-serif;
   background: #0d0d12;
   color: #e0dfe6;
 }
@@ -47,7 +47,7 @@ body {
 
 .login-title {
   margin: 0 0 6px 0;
-  font-family: 'Cinzel', serif;
+  font-family: 'Inter', serif;
   font-size: 28px;
   color: var(--primary-color);
 }
@@ -115,24 +115,32 @@ body {
 }
 
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+    display: flex;
+    justify-content: center; /* Centraliza o conteúdo principal (o título) */
+    align-items: center;
+    position: relative; /* Necessário para posicionar o botão de sair */
+    width: 100%;
+    min-height: 60px;
+}
+.topbar-left {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+    position: absolute;
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
 .page-title {
   margin: 0;
   font-size: clamp(26px, 4vw, 42px);
-  font-family: 'Cinzel', serif;
+  font-family: 'Orbitron', serif;
   font-weight: 900;
   color: var(--primary-color);
   letter-spacing: .03em;
@@ -331,7 +339,7 @@ body {
   letter-spacing: .12em;
   margin-bottom: 16px;
   opacity: .58;
-  font-family: 'Cinzel', serif;
+  font-family: 'Inter', serif;
 }
 
 @keyframes fadeIn {
@@ -348,3 +356,372 @@ body {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Estilos para a Ficha de Personagem dentro da App */
+.character-sheet-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.glow-box {
+  background: var(--surface-color);
+  border: 1px solid var(--secondary-color);
+  border-radius: 12px;
+}
+
+.sheet-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--primary-color);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.field-input {
+  background: var(--surface-soft);
+  border: 1px solid var(--secondary-color);
+  border-radius: 6px;
+  padding: 8px;
+  width: 100%;
+  color: white;
+  outline: none;
+}
+
+.attr-box {
+  background: rgba(0,0,0,0.2);
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.attr-input {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  font-weight: 900;
+  width: 100%;
+  text-align: center;
+  font-family: 'Inter', serif;
+}
+
+.status-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.pv-bg { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); }
+.pd-bg { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); }
+
+.stat-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  border: none;
+  color: white;
+  font-weight: bold;
+}
+
+.stat-input {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  width: 45px;
+  text-align: center;
+}
+
+.stat-divider {
+  font-size: 20px;
+  opacity: 0.3;
+}
+/* Fontes específicas para a Ficha */
+.sheet-wrapper {
+  font-family: 'Exo 2', sans-serif;
+  color: #d0cfe0;
+}
+
+.sheet-wrapper .glow-box {
+  border: 1px solid rgba(100, 120, 255, 0.15);
+  background: rgba(15, 15, 30, 0.6);
+  box-shadow: 0 0 12px rgba(80, 100, 255, 0.05), inset 0 0 20px rgba(80, 100, 255, 0.03);
+  backdrop-filter: blur(4px);
+}
+
+.sheet-wrapper .section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: rgba(160, 170, 255, 0.8);
+  border-bottom: 1px solid rgba(100, 120, 255, 0.12);
+  margin-bottom: 10px;
+}
+
+.sheet-info-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  color: rgba(140, 155, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.sheet-wrapper .field-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(100, 120, 255, 0.2);
+  color: #e0dfef;
+  font-size: 15px;
+}
+
+.sheet-wrapper .attr-box {
+  background: rgba(10, 10, 25, 0.7);
+  border: 1px solid rgba(100, 120, 255, 0.12);
+  text-align: center;
+  padding: 8px;
+}
+
+.sheet-wrapper .attr-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  color: rgba(140, 155, 255, 0.7);
+}
+
+.sheet-wrapper .attr-input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+}
+
+/* Status PV/PD Personalizado */
+.status-card-pv { background: rgba(220,50,50,0.25); border: 1px solid rgba(220,50,50,0.4); display: flex; padding: 10px; border-radius: 6px; }
+.status-card-pd { background: rgba(100,120,255,0.15); border: 1px solid rgba(100,120,255,0.3); display: flex; padding: 10px; border-radius: 6px; }
+
+.status-label-pv { font-size: 10px; color: rgba(255,100,100,0.7); font-family: 'Orbitron'; }
+.status-label-pd { font-size: 10px; color: rgba(150,170,255,0.7); font-family: 'Orbitron'; }
+
+.stat-main-input, .stat-max-input {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  width: 40px; /* Largura fixa para não empurrar a barra */
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  outline: none;
+}
+.stat-max-input {
+  opacity: 0.6;
+  font-size: 16px;
+}
+
+.stat-divider {
+  font-size: 18px;
+  color: rgba(255,255,255,0.3);
+  font-family: 'Orbitron', sans-serif;
+  user-select: none;
+}
+
+/* Garante que o card de status tenha espaço para os dois números */
+.status-card-pv, .status-card-pd {
+  min-width: 160px; 
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.status-btn { background: rgba(255,255,255,0.1); width: 30px; height: 30px; border-radius: 4px; color: white; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; }
+
+/* Container principal da ficha */
+.sheet-main-grid {
+  display: grid;
+  /* Coluna 1: 230px | Coluna 2: 1.2 partes do espaço | Coluna 3: 1 parte do espaço */
+  grid-template-columns: 230px 1.2fr 1fr;
+  gap: 1.25rem; /* Espaçamento entre as caixas */
+  align-items: start;
+  width: 100%;
+}
+/* Perícias */
+.skill-header {
+  display: grid;
+  /* Ajuste das sub-colunas das perícias */
+  grid-template-columns: 120px 35px 50px 15px 50px;
+  gap: 10px;
+  align-items: center;
+}
+.skill-row { display: grid; grid-template-columns: 130px 5px 50px 35px 50px; gap: 10px; padding: 4px 0; border-bottom: 1px solid rgba(100,120,255,0.05); }
+.skill-cell {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  color: white;
+  text-align: center;
+  border-radius: 4px;
+  font-size: 13px;
+}
+@media (max-width: 1200px) {
+  .sheet-main-grid {
+    grid-template-columns: 1fr; /* Empilha em telas pequenas */
+  }
+}
+.mini-label { font-family: 'Orbitron'; font-size: 9px; color: rgba(140, 155, 255, 0.5); text-align: center; }
+.mini-input { background: rgba(10, 10, 25, 0.5); border: 1px solid rgba(100, 120, 255, 0.15); color: white; width: 100%; text-align: center; border-radius: 4px; }
+/* Layout da Ficha em 3 Colunas */
+.sheet-grid-main {
+  display: grid;
+  /* 220px para status, o resto divide o espaço (1.2 para perícias e 1 para ataques) */
+  grid-template-columns: 220px 1.2fr 1fr;
+  gap: 15px; /* Espaço pequeno entre as colunas */
+  align-items: start;
+  width: 100%;
+  margin-top: 20px;
+}
+.skill-header, .skill-row {
+  display: grid;
+  /* Nome(flexível) | Atrib(40px) | Dados(45px) | Bónus(45px) | Treino(35px) | Outros(45px) */
+  grid-template-columns: 1.5fr 40px 45px 45px 45px 15px;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+/* Garante que em telas menores (celulares) elas fiquem uma embaixo da outra */
+@media (max-width: 1100px) {
+  .sheet-grid-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Ajuste para as caixas de texto não quebrarem o layout */
+.attack-area {
+  width: 100%;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(100,120,255,0.1);
+  color: white;
+  border-radius: 4px;
+  padding: 8px;
+  min-height: 150px;
+  resize: vertical;
+}
+/* Estilo dos Cards de Ataque */
+.attack-card {
+  transition: all 0.3s ease;
+}
+
+/* Container do card menor */
+.attack-card-mini {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  border-radius: 4px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Nome da arma em destaque */
+.attack-input-name {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+  color: #c7d2fe;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  padding-bottom: 2px;
+}
+
+/* Labels laterais (Teste, Dano, etc) */
+.attack-mini-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  color: rgba(165, 180, 252, 0.5);
+  min-width: 35px;
+}
+
+/* Inputs de dados */
+.attack-input-field {
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  width: 100%;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 2px;
+  outline: none;
+}
+
+.attack-input-field:focus {
+  background: rgba(139, 92, 246, 0.1);
+}
+/* Descrição e Efeito das Habilidades */
+.skills-list-container p {
+    font-size: 14px !important; /* Estava 9px */
+    line-height: 1.4;
+}
+@media (max-width: 768px) {
+  .absolute {
+    position: static !important; /* No mobile, eles voltam a ficar embaixo para não encavalar */
+    margin-top: 10px;
+    justify-content: center;
+  }
+}
+
+/* Ajustes para Celular */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0.8rem !important; /* Reduz o espaço interno drasticamente */
+  }
+
+  .page-title {
+    font-size: 16px !important; /* Diminui o título principal */
+    letter-spacing: 0.1em !important;
+  }
+
+  .user-label {
+    font-size: 10px !important; /* Diminui o "Logado como" */
+    margin-top: 2px !important;
+  }
+
+  .header-subtitle {
+    display: none; /* Esconde a frase "Selecione um elemento..." no celular para ganhar tela */
+  }
+
+  .topbar {
+    min-height: auto !important;
+    gap: 10px;
+  }
+
+  /* Ajusta os botões da direita para não encavalar no título */
+  .topbar-right {
+    position: static !important; /* Tira do "flutuante" e coloca abaixo ou ao lado */
+    justify-content: center;
+    margin-top: 8px;
+    gap: 8px;
+  }
+
+  .logout-btn {
+    padding: 3px 10px !important; /* Botão menor */
+    font-size: 10px !important;
+  }
+}
+@media (max-width: 768px) {
+  #tabs-container button {
+    padding: 6px 12px !important;
+    font-size: 11px !important;
+  }
+}
+.attack-area { background: rgba(10,10,25,0.4); border: 1px solid rgba(100,120,255,0.12); color: white; border-radius: 6px; padding: 8px; font-size: 13px; width: 100%; min-height: 70px; resize: none; }
