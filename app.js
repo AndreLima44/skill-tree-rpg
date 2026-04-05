@@ -2,14 +2,78 @@ const supabaseUrl = 'https://djtxrejpqunrqvgxobco.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdHhyZWpwcXVucnF2Z3hvYmNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTQ4ODIsImV4cCI6MjA5MDQ5MDg4Mn0.bcYtB_NEpLw1cbU5SEecRtcFnlWzfuPD3iejXlKWJ2A';
 const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-let currentTab = 'terra';
+// Estado Global
+let currentMainTab = 'personagem';
+let currentTab = 'personagem';
 let unlocked = {};
 let currentUser = null;
 let currentRole = 'player';
 let selectedUserId = null;
 let profilesCache = [];
 
+// Lista de Ataques (Inicia com um vazio)
+let characterAttacks = [
+  { nome: "", teste: "3d20+5", dano: "2d6", crit: "x2", alcance: "Curto" }
+];
+
+// --- FUNÇÕES DE ATAQUE ---
+window.saveCurrentAttacks = async function() {
+    const id = selectedUserId || (currentUser ? currentUser.id : null);
+    if (!id) return;
+
+    const cards = document.querySelectorAll('.attack-card-mini');
+    const updated = [];
+    
+    cards.forEach(card => {
+        const inputs = card.querySelectorAll('input');
+        if (inputs.length >= 4) {
+            updated.push({
+                nome: inputs[0].value,
+                teste: inputs[1].value,
+                dano: inputs[2].value,
+                crit: inputs[3].value,
+                alcance: inputs[4]?.value || ""
+            });
+        }
+    });
+
+    // Atualiza o cache local
+    attacksCache[id] = updated;
+
+    // ENVIA PARA O SUPABASE (Opcional: você pode ter um botão "Salvar" geral)
+  
+    await supabaseClient
+        .from('profiles')
+        .update({ attacks: updated })
+        .eq('id', id);
+
+};
+
+window.addAttack = function() {
+    window.saveCurrentAttacks();
+    characterAttacks.push({ nome: "", teste: "", dano: "", crit: "", alcance: "" });
+    
+    // Força a atualização da interface
+    if (typeof showTab === 'function') {
+        showTab('personagem');
+    }
+};
+
+window.removeAttack = function(index) {
+    window.saveCurrentAttacks();
+    if (characterAttacks.length > 1) {
+        characterAttacks.splice(index, 1);
+    } else {
+        characterAttacks = [{ nome: "", teste: "", dano: "", crit: "", alcance: "" }];
+    }
+    
+    if (typeof showTab === 'function') {
+        showTab('personagem');
+    }
+};
+
 const TAB_META = {
+personagem: '👤 Ficha de Personagem', // Nova aba
   terra: '🌍 Terra',
   energia: '⚡ Energia',
   frio: '❄️ Frio',
@@ -139,7 +203,16 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.tab === tab);
   });
-  document.getElementById('main-content').innerHTML = renderTab(tab);
+
+  const mainContent = document.getElementById('main-content');
+  
+  if (tab === 'personagem') {
+    mainContent.innerHTML = renderCharacterSheet();
+    // Reinicializa os ícones da Lucide se você estiver usando na ficha
+    if (window.lucide) window.lucide.createIcons();
+  } else {
+    mainContent.innerHTML = renderTab(tab);
+  }
 }
 
 async function login() {
@@ -281,4 +354,220 @@ async function checkSession() {
   }
 }
 
+function renderCharacterSheet() {
+  // Dados das perícias
+  const skillsList = [
+    ["Acrobacia","AGI"],["Adestramento","PRE"],["Artes","INT"],["Atletismo","FOR"],
+    ["Atualidades","INT"],["Ciências","INT"],["Estratégia","INT"],["Diplomacia","PRE"],
+    ["Enganação","PRE"],["Fortitude","VIG"],["Furtividade","AGI"],["Iniciativa","AGI"],
+    ["Intimidação","PRE"],["Intuição","PRE"],["Investigação","INT"],["Luta","FOR"],
+    ["Medicina","INT"],["Ressonância","INT"],["Percepção","PRE"],["Pilotagem","AGI"],
+    ["Pontaria","AGI"],["Profissão","INT"],["Reflexos","AGI"],["Religião","PRE"],
+    ["Sobrevivência","INT"],["Tática","INT"],["Tecnologia","INT"],["Vontade","PRE"]
+  ];
+
+  const skillsHtml = skillsList.map(([name, attr]) => `
+    <div class="skill-row">
+      <span class="skill-name">${name}</span>
+      <span class="skill-attr">${attr}</span>
+      <input class="skill-cell" type="text">
+      <input class="skill-check" type="checkbox">
+      <input class="skill-cell" type="text">
+    </div>
+  `).join('');
+const unlockedSkillsDetailed = [];
+  
+  for (const key in unlocked) {
+    if (unlocked[key]) {
+      const [element, skillName] = key.split('__');
+      
+      // Busca no objeto SKILLS os detalhes (desc, effect, res, etc)
+      if (SKILLS[element]) {
+        SKILLS[element].paths.forEach(path => {
+          const found = path.skills.find(s => s.name === skillName);
+          if (found) {
+            unlockedSkillsDetailed.push({ ...found, element });
+          }
+        });
+      }
+    }
+  }
+
+const skillsListHtml = unlockedSkillsDetailed.length > 0 
+    ? unlockedSkillsDetailed.map(s => `
+        <div class="attack-card-mini border-l-2 border-l-purple-500">
+          <div class="flex justify-between items-start mb-1">
+            <span class="attack-input-name" style="border:none; color:#a5b4fc;">${s.name}</span>
+            <span class="text-[9px] bg-purple-900/50 px-1 rounded text-purple-200">RES ${s.res}</span>
+          </div>
+          
+          <div class="space-y-1">
+            <div class="flex gap-1 text-[10px]">
+              <span class="text-purple-400/70 uppercase font-bold">${s.type}</span>
+              <span class="text-white/30">|</span>
+              <span class="text-gray-400">${s.range}</span>
+            </div>
+            
+            <p class="text-[14px] text-gray-300 leading-tight italic line-clamp-2" title="${s.desc}">
+              ${s.desc}
+            </p>
+            
+            <div class="bg-black/30 p-1 rounded border border-white/5">
+              <p class="text-[14px] text-purple-200 leading-tight">
+                <strong>EF:</strong> ${s.effect}
+              </p>
+            </div>
+          </div>
+        </div>
+      `).join('')
+    : '<p class="text-[10px] text-gray-500 italic p-4 text-center w-full">Nenhuma habilidade desbloqueada.</p>';
+    
+  return `
+    <div class="sheet-wrapper fade-in p-4">
+      <div class="glow-box p-4 mb-5">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div><label class="sheet-info-label">Personagem</label><input class="field-input" type="text"></div>
+          <div><label class="sheet-info-label">Origem</label><input class="field-input" type="text"></div>
+          <div><label class="sheet-info-label">Classe</label><input class="field-input" type="text"></div>
+          <div><label class="sheet-info-label">Trilha</label><input class="field-input" type="text"></div>
+          <div><label class="sheet-info-label">Jogador</label><input class="field-input" type="text"></div>
+        </div>
+      </div>
+
+<div class="grid grid-cols-1 lg:grid-cols-[200px_0.3fr_1.3fr] gap-4 items-start">
+  
+  <div class="flex flex-col gap-4">
+    <div class="glow-box p-4">
+      <div class="section-title"><i data-lucide="zap" class="w-3 h-3 inline"></i> ATRIBUTOS</div>
+      <div class="flex flex-col gap-3">
+        ${['FOR', 'AGI', 'INT', 'PRE', 'VIG'].map(a => `
+          <div class="attr-box w-full">
+            <div class="attr-label">${a}</div>
+            <input class="attr-input" type="text" value="0">
+          </div>
+        `).join('')}
+      </div>
+    </div>
+          <div class="glow-box p-4">
+            <div class="section-title"><i data-lucide="shield" class="w-3 h-3 inline"></i> STATUS</div>
+            <div class="space-y-4">
+              <div class="status-card-pv">
+                <button onclick="updateStat('pvAtual', -1)" class="status-btn">−</button>
+                <div class="flex-1 text-center">
+                  <div class="status-label-pv mb-1">PV</div>
+                  <div class="flex items-center justify-center gap-1">
+                    <input class="stat-main-input" id="pvAtual" type="text" value="0">
+                    <span class="stat-divider">/</span>
+                    <input class="stat-max-input" id="pvMax" type="text" value="0">
+                  </div>
+                </div>
+                <button onclick="updateStat('pvAtual', 1)" class="status-btn">+</button>
+              </div>
+
+              <div class="status-card-pd">
+                <button onclick="updateStat('pdAtual', -1)" class="status-btn">−</button>
+                <div class="flex-1 text-center">
+                  <div class="status-label-pd mb-1">PD</div>
+                  <div class="flex items-center justify-center gap-1">
+                    <input class="stat-main-input" id="pdAtual" type="text" value="0">
+                    <span class="stat-divider">/</span>
+                    <input class="stat-max-input" id="pdMax" type="text" value="0">
+                  </div>
+                </div>
+                <button onclick="updateStat('pdAtual', 1)" class="status-btn">+</button>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
+                <div class="text-center"><div class="mini-label">NÍVEL</div><input class="mini-input" type="text" value="1"></div>
+                <div class="text-center"><div class="mini-label">PR</div><input class="mini-input" type="text" value="0"></div>
+                <div class="text-center"><div class="mini-label">DEFESA</div><input class="mini-input" type="text" value="10"></div>
+                <div class="text-center"><div class="mini-label">ESQUIVA</div><input class="mini-input" type="text" value="10"></div>                
+                <div class="text-center"><div class="mini-label">ESQUIVA</div><input class="mini-input" type="text" value="10"></div>
+                <div class="text-center"><div class="mini-label">DESLOCAMENTO</div><input class="mini-input" type="text" value="9m"></div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glow-box p-4 h-full">
+          <div class="section-title"><i data-lucide="book-open" class="w-3 h-3 inline"></i> PERÍCIAS</div>
+          <div class="skill-header mb-2 text-[10px]">
+             <span>NOME</span><span class="text-center">ATRIBUTO</span>
+             <span>BONUS</span><span>TREINO</span><span>OUTROS</span>
+          </div>
+          <div class="space-y-0">
+            ${skillsHtml}
+          </div>
+        </div>
+
+<div class="glow-box p-4 h-full overflow-y-auto scroll-container">
+  
+<div class="section-title flex justify-between items-center mb-6">
+  <div class="flex items-center gap-2">
+    <i data-lucide="swords" class="w-4 h-4 text-purple-400"></i>
+    <span class="uppercase tracking-widest">Combate</span>
+  </div>
+  <button onclick="window.addAttack()" class="text-[9px] bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 px-3 py-1 rounded border border-purple-500/30 transition-all font-bold">
+    + ADICIONAR
+  </button>
+</div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+    ${characterAttacks.map((ataque, index) => `
+      <div class="attack-card-mini relative group">
+        <button onclick="window.removeAttack(${index})" class="absolute -top-1 -right-1 bg-red-600/80 hover:bg-red-600 text-white text-[8px] w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center">✕</button>
+        
+        <input class="attack-input-name" type="text" placeholder="Nome da Arma" value="${ataque.nome || ''}">
+        
+        <div class="space-y-1 mt-2">
+          <div class="flex items-center gap-1">
+            <span class="attack-mini-label">TESTE</span>
+            <input class="attack-input-field" type="text" placeholder="3d20+5" value="${ataque.teste || ''}">
+          </div>
+          <div class="grid grid-cols-2 gap-1">
+            <div class="flex items-center gap-1">
+              <span class="attack-mini-label">DANO</span>
+              <input class="attack-input-field" type="text" placeholder="2d6" value="${ataque.dano || ''}">
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="attack-mini-label text-[7px]">CRIT</span>
+              <input class="attack-input-field" type="text" placeholder="x2" value="${ataque.crit || ''}">
+            </div>
+          </div>
+          <div class="flex items-center gap-1">
+            <span class="attack-mini-label">ALCANCE</span>
+            <input class="attack-input-field" type="text" placeholder="Curto" value="${ataque.alcance || ''}">
+          </div>
+        </div>
+      </div>
+    `).join('')}
+  </div>
+
+  <div class="pt-6 border-t border-purple-500/30">
+    <div class="flex items-center gap-3 mb-5">
+      <i data-lucide="sparkles" class="w-5 h-5 text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.5)]"></i>
+      <span class="text-[16px] font-bold text-purple-400 uppercase tracking-[0.2em] font-['Orbitron']">
+        Habilidades Desbloqueadas
+      </span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      ${skillsListHtml}
+    </div>
+  </div>
+</div>`;
+}
+// Função global para os botões de + e -
+window.updateStat = function(id, delta) {
+  const el = document.getElementById(id);
+  if (el) {
+    let currentVal = parseInt(el.value) || 0;
+    el.value = Math.max(0, currentVal + delta);
+  }
+};
+
+function updateStat(id, delta) {
+  const el = document.getElementById(id);
+  if (el) el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
+}
 checkSession();
