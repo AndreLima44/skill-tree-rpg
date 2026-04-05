@@ -10,7 +10,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 contundente. Falha em Força: −1 Defesa até o próximo turno. Alvo sob controle recebe +1d6 adicional.",
+            effect: "Dano: 2d6 contundente (+1d6 se o alvo estiver sob controle). Teste (Força): Se falhar, sofre -1 de Defesa até o próximo turno.",
             res: 1
           },
           {
@@ -19,7 +19,7 @@ const SKILLS = {
             prereq: "Projétil Rochoso",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 + 2 dano. Falha: −2 Defesa. Empurra 1,5m.",
+            effect: "Dano: 2d6 + 2 contundente. Teste (Força): Se falhar, sofre -2 de Defesa e é Empurrado 1,5m.",
             res: 2
           },
           {
@@ -28,7 +28,7 @@ const SKILLS = {
             prereq: "Disparo Pesado",
             type: "Ataque em área",
             range: "12m",
-            effect: "3d6 dano. Adjacentes sofrem 1d6. Falha em Agilidade: Caído. Alvo com penalidade de Defesa sofre +2d6.",
+            effect: "Dano Principal: 3d6 (+2d6 se o alvo tiver penalidade na Defesa). Dano Adjacente: Inimigos colados ao alvo sofrem 1d6. Teste (Agilidade): Se falhar, o alvo principal fica Caído.",
             res: 3
           },
           {
@@ -37,7 +37,7 @@ const SKILLS = {
             prereq: "Impacto Sísmico",
             type: "Ataque em área",
             range: "12m",
-            effect: "3d6 dano. Ignora até 2 RD. Falha: Caído e −2 Defesa por 1 rodada. Alvo Caído sofre +2d6.",
+            effect: " Dano: 3d6 (Ignora até 2 de RD) (+2d6 se o alvo estiver Caído). Teste (Resistência): Se falhar, fica Caído e com -2 de Defesa por 1 rodada.",
             res: 4
           }
         ]
@@ -51,7 +51,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Defesa",
             range: "Pessoal",
-            effect: "+1 Defesa, RD 2, −3m deslocamento. +2 testes contra empurrão ou queda.",
+            effect: "• Bônus: +1 de Defesa. Resistência: RD 2 e +2 em testes contra Empurrão ou Queda. Penalidade: -3m de Deslocamento.",
             res: 1
           },
           {
@@ -60,7 +60,7 @@ const SKILLS = {
             prereq: "Pele de Pedra",
             type: "Defesa",
             range: "Pessoal",
-            effect: "+1 Defesa, RD 3, −3m deslocamento. 1x/rodada reduz +1d6 dano. Se não se mover: +1 Defesa.",
+            effect: "• Bônus: +1 de Defesa. Resistência: RD 3 e +2 em testes contra Empurrão ou Queda. Penalidade: -3m de Deslocamento. 1x/rodada reduz +1d6 dano. Se não se mover: +1 Defesa.",
             res: 2
           },
           {
@@ -69,7 +69,7 @@ const SKILLS = {
             prereq: "Couraça Rochosa",
             type: "Defesa",
             range: "Pessoal",
-            effect: "+2 Defesa, RD 4, −6m deslocamento. Não pode ser empurrado ou derrubado. Corpo a corpo contra você sofre 1d6.",
+            effect: "Bônus: +2 de Defesa. Resistência: RD 4 e Imunidade a ser Empurrado ou Derrubado. Contra-ataque: Inimigos que te acertarem corpo a corpo sofrem 1d6 de dano. Penalidade: -6m de Deslocamento.",
             res: 3
           },
           {
@@ -78,7 +78,7 @@ const SKILLS = {
             prereq: "Corpo de Rocha",
             type: "Defesa",
             range: "Pessoal",
-            effect: "+2 Defesa, RD 5, −6m deslocamento. Inamovível. 1x/rodada reduz um ataque em 2d6. Se ficou parado, próximo ataque +2d6.",
+            effect: "Bônus: +2 de Defesa. Resistência: RD 5 e Inamovível. Especial: 1x por rodada, reduz um ataque em 2d6. Combo: Se não se mover, seu próximo ataque causa +2d6 de dano. Penalidade: -6m de Deslocamento.",
             res: 4
           }
         ]
@@ -92,7 +92,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Área",
             range: "6m",
-            effect: "Área 3m: 1d6 dano. Falha em Agilidade: Caído. Solo fica instável até o próximo turno.",
+            effect: "Área 3m. Dano: 1d6. Teste (Agilidade): Se falhar fica Caído. O solo torna-se terreno instável até o próximo turno.",
             res: 1
           },
           {
@@ -101,7 +101,7 @@ const SKILLS = {
             prereq: "Tremor",
             type: "Área",
             range: "6m",
-            effect: "1d6 dano, duração 2 rodadas. Falha: Caído. Sucesso: −1 em ataques. Quem começa na área testa novamente.",
+            effect: "Dano: 1d6. Duração: 2 rodadas. Teste (Agilidade): Se falhar fica Caído. Se tiver sucesso sofre -1 em ataques. Alvos que iniciarem o turno na área devem testar novamente.",
             res: 2
           },
           {
@@ -110,7 +110,7 @@ const SKILLS = {
             prereq: "Abalo Contínuo",
             type: "Área",
             range: "6m",
-            effect: "Área 6m, 2d6 dano, duração 3 rodadas. Falha: Caído e −2 Defesa. Mover-se na área causa +1d6.",
+            effect: "Área 6m. Dano: 2d6. Duração: 3 rodadas. Teste (Agilidade): Se falhar fica Caído e com -2 de Defesa. Mover-se dentro da área causa +1d6 de dano adicional.",
             res: 3
           },
           {
@@ -119,7 +119,7 @@ const SKILLS = {
             prereq: "Fissura Sísmica",
             type: "Área",
             range: "6m",
-            effect: "Área 6m, 2d6 dano, duração 3 rodadas. Falha: Caído e −2 Defesa. Zona causa 1d6/rodada. Alvos Caídos sofrem +2d6 Terra.",
+            effect: "Área 6m. Dano: 2d6. Duração: 3 rodadas. Zona de Colapso: Causa 1d6 por rodada. Teste (Agilidade): Se falhar fica Caído e com -2 de Defesa. Combo: Alvos Caídos sofrem +2d6 de dano de Terra.",
             res: 4
           }
         ]
@@ -138,7 +138,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "9m",
-            effect: "2d6 fogo. Falha em Vigor: 1d4 no próximo turno. Alvo já sob efeito de fogo recebe +1d6.",
+            effect: "Dano: 2d6 fogo (+1d6 se o alvo já estiver em chamas). Teste (Vigor): Se falhar, sofre 1d4 de dano de fogo no próximo turno.",
             res: 1
           },
           {
@@ -147,7 +147,7 @@ const SKILLS = {
             prereq: "Chama Breve",
             type: "Ataque",
             range: "9m",
-            effect: "2d6 fogo. Falha: 1d6 por 2 rodadas. Adjacente sofre 1d6.",
+            effect: "Dano Principal: 2d6 fogo. Dano Adjacente: Inimigos colados ao alvo sofrem 1d6. Teste (Vigor): Se falhar, sofre 1d6 de dano de fogo por 2 rodadas.",
             res: 2
           },
           {
@@ -156,7 +156,7 @@ const SKILLS = {
             prereq: "Chama Intensificada",
             type: "Ataque em área",
             range: "9m",
-            effect: "3d6 fogo. Adjacentes sofrem 1d6. Falha: 1d6 por 2 rodadas. Alvo em fogo sofre +2d6.",
+            effect: "Dano: 3d6 fogo (+2d6 se o alvo já estiver em chamas). Dano Adjacente: 1d6. Teste (Vigor): Se falhar, sofre 1d6 de dano de fogo por 2 rodadas.",
             res: 3
           },
           {
@@ -165,7 +165,7 @@ const SKILLS = {
             prereq: "Explosão Incandescente",
             type: "Ataque em área",
             range: "9m",
-            effect: "3d6 fogo em área 3m. Todos sofrem 1d6 por 2 rodadas. Alvos em fogo propagam 1d6 para adjacentes. Inimigos em chamas: −1 testes.",
+            effect: "Área 3m. Dano: 3d6 fogo. Efeito: Todos na área sofrem 1d6 por 2 rodadas. Propagação: Alvos em chamas causam 1d6 aos seus adjacentes. Penalidade: Inimigos em chamas sofrem -1 em todos os testes.",
             res: 4
           }
         ]
@@ -179,34 +179,34 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Aprimoramento",
             range: "Pessoal",
-            effect: "+1d4 fogo corpo a corpo. Cada acerto consecutivo no mesmo alvo: +1 dano, máx +3. No máximo: +1d6 e reinicia.",
+            effect: "Ativação: Encanta sua arma com chamas, habilitando a mecânica de Combo. Bônus: +1d4 de fogo. Combo: Cada acerto consecutivo no mesmo alvo aumenta o dano em +1 (máx. +3). Se errar ou trocar de alvo, as chamas se apagam e o combo reinicia.",
             res: 1
           },
           {
             name: "Corte Incandescente",
             desc: "Seus ataques começam a liberar energia acumulada em golpes mais violentos.",
             prereq: "Lâmina Flamejante",
-            type: "Ataque",
+            type: "Aprimoramento",
             range: "Corpo a corpo",
-            effect: "+1d6 fogo. Ao atingir 3 acúmulos: +2d6 e 1d6 em adjacentes. Alvo em fogo recebe +1d6.",
+            effect: "Requisito: Lâmina Flamejante ativa. Bônus: +1d6 de fogo. Finalizador de Combo: Ao atingir o 3º acerto consecutivo com a Lâmina ativa, causa +2d6 de dano e explode atingindo adjacentes com 1d6.",
             res: 2
           },
           {
             name: "Fúria Flamejante",
             desc: "Você entra em um estado agressivo onde o fogo responde à sua ofensiva constante.",
             prereq: "Corte Incandescente",
-            type: "Ataque",
+            type: "Aprimoramento",
             range: "Corpo a corpo",
-            effect: "+1d6 fogo. Cada acerto bem-sucedido concede +1d6, máx +3d6. Ao errar ou trocar de alvo perde acúmulo. Alvos sofrem 1d6 por rodada enquanto você mantiver foco.",
+            effect: "Requisito: Lâmina Flamejante ativa. Evolução de Combo: Enquanto mantiver o foco no mesmo alvo, o limite de dano da Lâmina sobe para +1d6 por acerto (máx. +3d6). Especial: Alvos sob seu foco sofrem 1d6 de fogo por rodada.",
             res: 3
           },
           {
             name: "Carnificina Ígnea",
             desc: "Você libera toda a energia acumulada em uma sequência devastadora de ataques.",
             prereq: "Fúria Flamejante",
-            type: "Ataque",
+            type: "Aprimoramento",
             range: "Corpo a corpo",
-            effect: "+2d6 fogo. Ao atingir um alvo pode atacar outro adjacente 1x/turno. Alvo em fogo sofre +2d6 e espalha 1d6. No fim, todos sofrem 1d6 por acúmulos restantes.",
+            effect: "Requisito: Lâmina Flamejante ativa. Massacre: 1x por turno, ao acertar o alvo do combo, pode realizar um ataque extra contra um inimigo adjacente. Combo Máximo: Alvos em chamas sofrem +2d6 adicionais. Expurgo: Causa 1d6 extra para cada acerto acumulado na sequência atual.",
             res: 4
           }
         ]
@@ -220,7 +220,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Controle",
             range: "Pessoal (aura 3m)",
-            effect: "1d6 fogo por rodada. Falha em Vigor: −1 em testes. Permanecer 2 rodadas: −3m deslocamento.",
+            effect: "Aura (3m). Dano: 1d6 fogo por rodada. Teste (Vigor): Se falhar, sofre -1 em todos os testes. Persistência: Permanecer 2 rodadas na área reduz o Deslocamento em -3m.",
             res: 1
           },
           {
@@ -229,7 +229,7 @@ const SKILLS = {
             prereq: "Onda de Calor",
             type: "Controle",
             range: "Pessoal (aura 3m)",
-            effect: "1d6+1 fogo por rodada. −2 testes. Cada rodada na área: +1 dano extra, máx +3.",
+            effect: "Aura (3m). Dano: 1d6+1 fogo por rodada. Penalidade: -2 em todos os testes dentro da área. Escalonamento: Cada rodada consecutiva que o inimigo passa na área aumenta o dano recebido em +1 (máx. +3).",
             res: 2
           },
           {
@@ -238,7 +238,7 @@ const SKILLS = {
             prereq: "Calor Crescente",
             type: "Controle",
             range: "Pessoal (aura 6m)",
-            effect: "Área 6m. 1d6 dano por rodada e −2 testes. Alvos em fogo sofrem +1d6 por rodada. Entrar na área causa 1d6.",
+            effect: "Aura (6m). Dano: 1d6 fogo por rodada. Penalidade: -2 em todos os testes. Barreira de Calor: Entrar na área causa 1d6 de dano imediato. Combo: Alvos já em chamas sofrem +1d6 de dano extra por rodada.",
             res: 3
           },
           {
@@ -247,7 +247,7 @@ const SKILLS = {
             prereq: "Zona de Combustão",
             type: "Controle",
             range: "Pessoal (aura 6m)",
-            effect: "Área 6m por 4 rodadas. 2d6 dano por rodada, −2 testes, −3m movimento. Inimigos em fogo sofrem +2d6 imediato 1x/rodada. Aliados recebem +1d6 fogo em ataques.",
+            effect: "Aura (6m). Duração: 4 rodadas. Dano: 2d6 fogo por rodada. Debuff: -2 em testes e -3m de Deslocamento. Combustão Instantânea: Inimigos em chamas sofrem +2d6 de dano imediato (1x por rodada). Suporte: Ataques de aliados dentro da área causam +1d6 de fogo.",
             res: 4
           }
         ]
@@ -266,7 +266,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 dano. Falha em Força: empurra 3m. Alvo fica Encharcado até o próximo turno.",
+            effect: "Dano: 2d6. Teste (Força): Se falhar, é Empurrado 3m. Estado: O alvo fica Encharcado até o próximo turno.",
             res: 1
           },
           {
@@ -275,7 +275,7 @@ const SKILLS = {
             prereq: "Jato de Água",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 dano, empurra 6m. Falha: também fica Caído. Alvo Encharcado recebe +1d6 e não evita empurrão.",
+            effect: "Dano: 2d6. Efeito: Empurra 6m. Teste (Força): Se falhar, também fica Caído. Combo: Alvos Encharcados recebem +1d6 de dano e não podem resistir ao empurrão.",
             res: 2
           },
           {
@@ -284,7 +284,7 @@ const SKILLS = {
             prereq: "Correnteza Forçada",
             type: "Ataque",
             range: "12m",
-            effect: "3d6 dano, empurra 6m. Colisão: +2d6. Criaturas no caminho sofrem 1d6. Alvo Encharcado: −2 testes físicos.",
+            effect: "Dano: 3d6. Efeito: Empurra 6m. Colisão: Se o alvo bater em algo, sofre +2d6 de dano. Atropelo: Criaturas no caminho do empurrão sofrem 1d6. Combo: Alvo Encharcado sofre -2 em testes físicos.",
             res: 3
           },
           {
@@ -293,7 +293,7 @@ const SKILLS = {
             prereq: "Impacto Hidráulico",
             type: "Ataque em área",
             range: "Linha 12m",
-            effect: "Todos sofrem 3d6 dano e empurrão 6m. Teste reduz pela metade. Alvos Encharcados são empurrados automaticamente e ficam Caídos. Você pode mover até 6m junto.",
+            effect: "Área: Linha de 12m. Dano: 3d6 (Teste reduz à metade). Efeito: Todos são empurrados 6m. Combo: Alvos Encharcados são empurrados automaticamente e ficam Caídos. Mobilidade: Você pode se mover até 6m junto com a torrente.",
             res: 4
           }
         ]
@@ -307,7 +307,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 perfurante + água. Falha em Vigor: +1d6 implosão. Alvo Encharcado sofre implosão automaticamente.",
+            effect: "Dano: 2d6 perfurante. Teste (Vigor): Se falhar, sofre +1d6 de dano de implosão. Combo: Alvos Encharcados sofrem o dano de implosão automaticamente.",
             res: 1
           },
           {
@@ -316,7 +316,7 @@ const SKILLS = {
             prereq: "Arsenal Hidrostático",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 dano e +2d6 implosão. Pode criar 2 armas simultaneamente. Encharcado: +1d6 adicional.",
+            effect: "Dano: 2d6 direto e +2d6 de implosão. Multiplicar: Você pode criar e disparar 2 armas simultaneamente. Combo: Alvo Encharcado recebe +1d6 de dano adicional.",
             res: 2
           },
           {
@@ -325,7 +325,7 @@ const SKILLS = {
             prereq: "Arma Compressiva",
             type: "Ataque",
             range: "12m",
-            effect: "3d6 dano e +2d6 implosão. Alvo sob efeito sofre +2d6 adicional e −1 testes físicos.",
+            effect: "Dano: 3d6 direto e +2d6 de implosão. Penalidade: Alvos atingidos sofrem -1 em testes físicos. Combo: Se o alvo já estiver sob efeito de implosão ou encharcado, sofre +2d6 de dano extra.",
             res: 3
           },
           {
@@ -334,7 +334,7 @@ const SKILLS = {
             prereq: "Ruptura Hidrostática",
             type: "Ataque",
             range: "12m",
-            effect: "3d6 dano e +3d6 implosão. Até 3 armas. Encharcado: cada impacto aplica implosão completa. Abaixo de 50% PV: +2d6.",
+            effect: "Dano: 3d6 direto e +3d6 de implosão. Multiplicar: Você pode disparar até 3 armas. Combo: Contra alvos Encharcados, cada impacto aplica o dano de implosão completo. Execução: Causa +2d6 se o alvo estiver com menos de 50% do PV.",
             res: 4
           }
         ]
@@ -348,7 +348,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Cura",
             range: "Toque",
-            effect: "Cura 2d6 + Intelecto. Escolha: +1d6 PV, remove condição leve ou +1 testes por 1 rodada. Alvo Encharcado: +1d6 cura.",
+            effect: "Cura: 2d6 + Intelecto. Escolha: Restaurar +1d6 PV, remover 1 condição leve ou conceder +1 em testes por 1 rodada. Combo: Se o alvo estiver Encharcado, recebe +1d6 de cura adicional.",
             res: 1
           },
           {
@@ -357,7 +357,7 @@ const SKILLS = {
             prereq: "Cura Fluida",
             type: "Cura",
             range: "3m",
-            effect: "Cura 2d6 + Intelecto em um alvo e metade em outro a até 3m. Alvos recebem +1 Defesa ou +1 testes por 1 rodada.",
+            effect: "Cura: 2d6 + Intelecto no alvo principal e metade desse valor em um aliado a até 3m. Suporte: Ambos os alvos recebem +1 de Defesa ou +1 em todos os testes por 1 rodada.",
             res: 2
           },
           {
@@ -366,7 +366,7 @@ const SKILLS = {
             prereq: "Corrente Restauradora",
             type: "Cura",
             range: "Pessoal/Toque",
-            effect: "Cura imediata 2d6 + Intelecto e mais 1d6 por rodada durante 2 rodadas. Encharcado: cura contínua vira 1d6+1.",
+            effect: "Cura Imediata: 2d6 + Intelecto. Regeneração: O alvo recupera 1d6 PV por rodada durante 2 rodadas. Combo: Se estiver Encharcado, a cura contínua aumenta para 1d6+1.",
             res: 3
           },
           {
@@ -375,7 +375,7 @@ const SKILLS = {
             prereq: "Maré Vital",
             type: "Cura",
             range: "6m",
-            effect: "Cura 3d6 + Intelecto em área. Remove até 2 condições leves. Alvo cheio recebe escudo 2d6. Encharcado: +1d6 cura.",
+            effect: "Cura em Área: 3d6 + Intelecto. Purificação: Remove até 2 condições leves dos atingidos. Excedente: Alvos com PV máximo recebem um Escudo de 2d6. Combo: Alvos Encharcados recebem +1d6 de cura.",
             res: 4
           }
         ]
@@ -394,7 +394,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 dano. Falha em Força: empurra 3m. Próximo ataque contra o alvo: +1. Colisão: 1d4 em ambos.",
+            effect: "Dano: 2d6. Teste (Força): Se falhar, é Empurrado 3m. Suporte: O próximo ataque contra o alvo recebe +1 de bônus. Colisão: Se o alvo bater em algo, ambos sofrem 1d4 de dano.",
             res: 1
           },
           {
@@ -403,7 +403,7 @@ const SKILLS = {
             prereq: "Rajada de Vento",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 dano, empurra 4,5m na direção escolhida. Falha: −1 Defesa.",
+            effect: "Dano: 2d6. Efeito: Empurra o alvo 4,5m na direção escolhida. Teste (Força): Se falhar, o alvo sofre -1 de Defesa até o seu próximo turno.",
             res: 2
           },
           {
@@ -412,7 +412,7 @@ const SKILLS = {
             prereq: "Corrente de Ar",
             type: "Ataque",
             range: "12m",
-            effect: "3d6 dano, empurra 4,5m, ignora +1 Defesa. Se mover após ser atingido: +1d6. Se já foi movido no turno: +1d6.",
+            effect: "Dano: 3d6. Efeito: Empurra 4,5m e ignora 1 ponto de Defesa. Combo: Causa +1d6 de dano se o alvo já tiver sido movido neste turno. Especial: Se o alvo se mover voluntariamente após ser atingido, sofre +1d6 de dano.",
             res: 3
           },
           {
@@ -421,7 +421,7 @@ const SKILLS = {
             prereq: "Fluxo Cortante",
             type: "Ataque em área",
             range: "12m",
-            effect: "3d6 dano em até 3 alvos. Empurra 4,5m cada. Colisão: 2d6 em ambos. Para cada alvo atingido: +1 em testes até o próximo turno, máx +3.",
+            effect: "Multi-alvo: Ataca até 3 inimigos. Dano: 3d6 e Empurra 4,5m cada. Colisão: Se baterem em algo, ambos sofrem 2d6 de dano. Bônus: Você ganha +1 em todos os testes para cada alvo atingido (máx. +3) até o próximo turno.",
             res: 4
           }
         ]
@@ -435,7 +435,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "+6m deslocamento e +1 Ataque Leve por turno. Após atacar pode mover 1,5m sem ataque de oportunidade.",
+            effect: "Bônus: +6m de Deslocamento e +1 Ação Leve por turno. Mobilidade: Após realizar um ataque, você pode se mover 1,5m sem provocar ataques de oportunidade.",
             res: 1
           },
           {
@@ -444,7 +444,7 @@ const SKILLS = {
             prereq: "Passo do Vento",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "+6m deslocamento, +1 Ataque Leve. Se acertar dois ataques no turno: +1 no próximo ataque. Pode dividir deslocamento entre ataques.",
+            effect: "Bônus: +6m de Deslocamento e +1 Ação Leve. Tática: Você pode dividir seu deslocamento livremente entre seus ataques. Combo: Se acertar dois ataques no mesmo turno, ganha +1 de bônus no próximo ataque.",
             res: 2
           },
           {
@@ -453,7 +453,7 @@ const SKILLS = {
             prereq: "Ritmo Acelerado",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "+9m deslocamento, +2 Ataques Leves. Ataques consecutivos no mesmo alvo: +1 dano cumulativo, máx +3. Após atacar: +1 Defesa.",
+            effect: "Bônus: +9m de Deslocamento e +2 Ações Leves. Combo: Ataques consecutivos no mesmo alvo somam +1 de dano (máx. +3). Defesa: Cada ataque realizado concede +1 de Defesa até o início do seu próximo turno.",
             res: 3
           },
           {
@@ -462,7 +462,7 @@ const SKILLS = {
             prereq: "Dança dos Ventos",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "+9m deslocamento, +3 Ataques Leves. Se acertar o mesmo alvo 3 vezes: +2d6. Pode mover sem AoO entre ataques. Cada ataque após o primeiro: +1 acerto.",
+            effect: "Bônus: +9m de Deslocamento e +3 Ações Leves. Mobilidade: Você não provoca ataques de oportunidade ao se mover entre ataques. Precisão: Cada ataque realizado após o primeiro recebe +1 de acerto. Finalizador: Se acertar o mesmo alvo 3 vezes, causa +2d6 de dano extra.",
             res: 4
           }
         ]
@@ -476,7 +476,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "15m",
-            effect: "2d6 cortante e +1 no teste de ataque. Alvo que não se moveu no último turno sofre +1d6.",
+            effect: "Dano: 2d6 cortante. Precisão: +1 no teste de ataque. Especial: Se o alvo não se moveu no último turno, sofre +1d6 de dano adicional.",
             res: 1
           },
           {
@@ -485,7 +485,7 @@ const SKILLS = {
             prereq: "Corte de Ar",
             type: "Ataque",
             range: "15m",
-            effect: "2d6 dano e +2 no ataque. Ignora −1 de cobertura ou Defesa. Alvo abaixo de 50% PV sofre +1d6.",
+            effect: "Dano: 2d6. Precisão: +2 no teste de ataque. Tática: Ignora -1 de Defesa ou Cobertura do alvo. Execução: Causa +1d6 de dano se o alvo estiver com menos de 50% do PV.",
             res: 2
           },
           {
@@ -494,7 +494,7 @@ const SKILLS = {
             prereq: "Lâmina Direcionada",
             type: "Ataque",
             range: "15m",
-            effect: "3d6 dano e +2 no ataque. Ignora +2 Defesa. O alvo sofre +1d6 no próximo turno. Se se moveu no turno anterior: +1d6.",
+            effect: "Dano: 3d6. Precisão: +2 no teste de ataque e ignora 2 pontos de Defesa. Persistência: O alvo sofre +1d6 de dano no início do próximo turno dele. Especial: Causa +1d6 se o alvo se moveu no turno anterior.",
             res: 3
           },
           {
@@ -503,7 +503,7 @@ const SKILLS = {
             prereq: "Fenda de Vento",
             type: "Ataque",
             range: "15m",
-            effect: "3d6 dano e +3 no ataque. Ignora +3 Defesa. Alvo abaixo de 50% PV sofre +2d6. Ao acertar: segundo ataque com −2.",
+            effect: "Dano: 3d6. Precisão: +3 no teste de ataque e ignora 3 pontos de Defesa. Execução: Causa +2d6 de dano se o alvo estiver com menos de 50% do PV. Multi-ataque: Ao acertar, você pode realizar um segundo ataque imediato com -2 de penalidade.",
             res: 4
           }
         ]
@@ -522,7 +522,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 elétrico. Falha em Vigor: −2 em testes de ataque. Também sofre −1 em todos os testes.",
+            effect: "Dano: 2d6 elétrico. Teste (Vigor): Se falhar, sofre -2 em testes de ataque e -1 em todos os outros testes até o próximo turno.",
             res: 1
           },
           {
@@ -531,7 +531,7 @@ const SKILLS = {
             prereq: "Descarga Elétrica",
             type: "Ataque",
             range: "12m",
-            effect: "2d6 dano. Falha: −2 em testes e fica Sobrecarregado. Segundo alvo a até 3m sofre 1d6.",
+            effect: "Dano: 2d6. Arco Elétrico: Um segundo alvo a até 3m do original sofre 1d6 de dano. Teste (Vigor): Se falhar, sofre -2 em todos os testes e fica Sobrecarregado.",
             res: 2
           },
           {
@@ -540,7 +540,7 @@ const SKILLS = {
             prereq: "Sobrecarga",
             type: "Ataque em área",
             range: "12m",
-            effect: "3d6 dano. Atinge até 2 alvos adicionais a 3m entre si. Alvos sofrem −2 em testes e −1 ação leve. Sobrecarregados sofrem +2d6.",
+            effect: "Multi-alvo: Atinge o alvo principal e até 2 adicionais (a 3m entre si). Dano: 3d6. Debuff: Alvos sofrem -2 em testes e perdem 1 Ação Leve. Combo: Inimigos já Sobrecarregados sofrem +2d6 de dano extra.",
             res: 3
           },
           {
@@ -549,7 +549,7 @@ const SKILLS = {
             prereq: "Corrente Instável",
             type: "Ataque em área",
             range: "12m",
-            effect: "3d6 dano em até 3 alvos. Falha: Atordoado por 1 rodada. Sucesso: −2 testes. Sobrecarregado falha automaticamente e sofre +2d6.",
+            effect: "Área: Até 3 alvos. Dano: 3d6. Teste (Vigor): Se falhar, fica Atordoado por 1 rodada. Se passar, sofre -2 em todos os testes. Combo: Alvos Sobrecarregados falham no teste automaticamente e sofrem +2d6 de dano.",
             res: 4
           }
         ]
@@ -563,7 +563,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Defesa",
             range: "Pessoal",
-            effect: "RD 2. Ao sofrer dano, atacante sofre −1 testes. Se for atingido, seu próximo ataque causa +1d6 elétrico.",
+            effect: "Proteção: RD 2. Punição: Ao sofrer dano, o atacante recebe -1 em todos os testes. Contra-ataque: Se você for atingido, seu próximo ataque causa +1d6 de dano elétrico.",
             res: 1
           },
           {
@@ -572,7 +572,7 @@ const SKILLS = {
             prereq: "Campo Energético",
             type: "Defesa",
             range: "Pessoal",
-            effect: "RD 2. Corpo a corpo contra você sofre 1d6 elétrico e −1 testes. Se o mesmo inimigo te atacar duas vezes: fica Sobrecarregado.",
+            effect: "Proteção: RD 2. Reação: Inimigos que realizarem ataques corpo a corpo contra você sofrem 1d6 de dano elétrico e -1 em testes. Combo: Se o mesmo inimigo atacar você duas vezes no mesmo turno, fica Sobrecarregado.",
             res: 2
           },
           {
@@ -581,7 +581,7 @@ const SKILLS = {
             prereq: "Campo Reativo",
             type: "Defesa",
             range: "Pessoal (aura 3m)",
-            effect: "RD 3. Inimigos adjacentes sofrem −2 testes. Se falharem em teste na área, perdem 1 ação leve. Sobrecarregados sofrem 1d6 por rodada.",
+            effect: "Aura (3m). Proteção: RD 3. Debuff: Inimigos na área sofrem -2 em todos os testes. Interferência: Se um inimigo falhar em um teste dentro da área, perde 1 Ação Leve. Passivo: Alvos Sobrecarregados sofrem 1d6 de dano por rodada na aura.",
             res: 3
           },
           {
@@ -590,7 +590,7 @@ const SKILLS = {
             prereq: "Campo de Interferência",
             type: "Defesa",
             range: "Pessoal (aura 3m)",
-            effect: "RD 3. Inimigos adjacentes sofrem descarga. Sobrecarregados na área entram em colapso com mais facilidade. Ideal para controle reativo.",
+            effect: "Aura (3m). Proteção: RD 3. Descarga: Inimigos que terminarem o turno adjacentes sofrem uma descarga elétrica (1d6). Colapso: Inimigos Sobrecarregados na área dobram as penalidades de testes e perdem 3m de Deslocamento.",
             res: 4
           }
         ]
@@ -604,7 +604,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Área",
             range: "6m",
-            effect: "2d6 elétrico em área 3m. Falha: −1 testes. Se atingir 2+ alvos, aplica −1 adicional.",
+            effect: "Área: 3m. Dano: 2d6 elétrico. Teste (Vigor): Se falhar, sofre -1 em todos os testes. Ressonância: Se atingir 2 ou mais alvos, a penalidade aumenta para -2.",
             res: 2
           },
           {
@@ -613,7 +613,7 @@ const SKILLS = {
             prereq: "Pulso Arcano",
             type: "Área",
             range: "6m",
-            effect: "2d6 elétrico em área 3m. Falha: −2 testes e Sobrecarregado. Eco: 1d6 no próximo turno.",
+            effect: "Área: 3m. Dano: 2d6 elétrico. Teste (Vigor): Se falhar, sofre -2 em todos os testes e fica Sobrecarregado. Eco: Alvos atingidos sofrem 1d6 de dano elétrico adicional no início do próximo turno deles.",
             res: 2
           },
           {
@@ -622,7 +622,7 @@ const SKILLS = {
             prereq: "Pulso Instável",
             type: "Área",
             range: "6m",
-            effect: "3d6 elétrico em área 3m. Falha: −2 testes e −1 ação leve. Sobrecarregado: +2d6. A área permanece por 1 rodada.",
+            effect: "Área: 3m. Dano: 3d6 elétrico. Debuff: Se falhar no teste, sofre -2 em testes e perde 1 Ação Leve. Combo: Alvos já Sobrecarregados sofrem +2d6 de dano. Persistência: A área do pulso torna-se terreno difícil e causa 1d6 a quem entrar por 1 rodada.",
             res: 3
           },
           {
@@ -631,7 +631,7 @@ const SKILLS = {
             prereq: "Ruptura Energética",
             type: "Área",
             range: "6m",
-            effect: "3d6 elétrico em área 3m. Falha: Atordoado. Sobrecarregado: falha automática e +2d6. A zona permanece por 2 rodadas.",
+            effect: "Área: 3m. Dano: 3d6 elétrico. Teste (Vigor): Se falhar, fica Atordoado por 1 rodada. Combo: Alvos Sobrecarregados falham no teste automaticamente e sofrem +2d6 de dano. Zona Estática: A área permanece instável por 2 rodadas, causando 1d6 de dano em quem terminar o turno nela.",
             res: 4
           }
         ]
@@ -650,7 +650,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "Toque",
-            effect: "2d6 frio. −3m deslocamento. Penalidade leve ao movimento.",
+            effect: "Dano: 2d6 frio. Redução: O alvo sofre -3m de Deslocamento. Estado: Aplica uma penalidade leve de movimento até o início do seu próximo turno.",
             res: 1
           },
           {
@@ -659,7 +659,7 @@ const SKILLS = {
             prereq: "Toque Congelante",
             type: "Ataque",
             range: "Toque",
-            effect: "2d6 dano. −6m deslocamento. Falha em Vigor: −1 testes. Novo efeito de Frio: fica Lento.",
+            effect: "Dano: 2d6. Redução: O alvo sofre -6m de Deslocamento. Teste (Vigor): Se falhar, recebe -1 em todos os testes e fica Lento (perde 1 ação leve).",
             res: 2
           },
           {
@@ -668,7 +668,7 @@ const SKILLS = {
             prereq: "Congelamento Parcial",
             type: "Ataque",
             range: "Toque",
-            effect: "3d6 dano. Falha em Vigor: Imobilizado por 1 rodada. Sucesso: −6m deslocamento. Alvo Imobilizado recebe +1d6 de qualquer ataque.",
+            effect: "Dano: 3d6. Teste (Vigor): Se falhar, fica Imobilizado por 1 rodada. Se passar, sofre apenas -6m de Deslocamento. Combo: O alvo Imobilizado torna-se vulnerável, recebendo +1d6 de dano de qualquer ataque.",
             res: 3
           },
           {
@@ -677,7 +677,7 @@ const SKILLS = {
             prereq: "Prisão Gélida",
             type: "Ataque",
             range: "Toque",
-            effect: "3d6 dano. Falha: Congelado por 1 rodada. Sucesso: Imobilizado. Alvos Congelados recebem +2d6. Ao terminar: +1d6 ruptura.",
+            effect: "Dano: 3d6. Teste (Vigor): Se falhar, fica Congelado (Incapaz de agir) por 1 rodada. Se passar, fica Imobilizado. Combo: Alvos Congelados recebem +2d6 de dano. Finalizador: Ao descongelar, o alvo sofre +1d6 de dano de ruptura.",
             res: 4
           }
         ]
@@ -691,7 +691,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "12m / Corpo a corpo",
-            effect: "2d6 dano + frio. Escolha: cortante (+1 ataque), perfurante (ignora −1 Defesa) ou impacto (+2 dano). Alvo: −3m deslocamento.",
+            effect: "Dano: 2d6 (Frio + Tipo Escolhido). Escolha: Cortante (+1 no acerto), Perfurante (Ignora 1 de Defesa) ou Impacto (+2 de dano). Redução: O alvo sofre -3m de Deslocamento.",
             res: 1
           },
           {
@@ -700,7 +700,7 @@ const SKILLS = {
             prereq: "Arma de Gelo",
             type: "Ataque",
             range: "12m / Corpo a corpo",
-            effect: "2d6 frio. Permite alternar melhor as formas e manter pressão com estilhaços e resfriamento.",
+            effect: "Dano: 2d6 frio. Versatilidade: Você pode alternar a forma da arma entre ataques. Pressão: Ao atingir um alvo, estilhaços de gelo garantem +1 no próximo teste de ataque contra ele.",
             res: 2
           },
           {
@@ -709,7 +709,7 @@ const SKILLS = {
             prereq: "Arsenal Gélido",
             type: "Ataque",
             range: "12m / Corpo a corpo",
-            effect: "3d6 frio. Ignora +2 Defesa. Alvos reduzidos ou Imobilizados sofrem +2d6. Quebra atinge adjacentes.",
+            effect: "Dano: 3d6 frio. Tática: Ignora 2 pontos de Defesa. Combo: Alvos com Deslocamento reduzido ou Imobilizados sofrem +2d6 de dano. Fragmentação: Ao atingir um alvo, inimigos adjacentes sofrem 1d6 de dano de frio.",
             res: 3
           },
           {
@@ -718,7 +718,7 @@ const SKILLS = {
             prereq: "Arma Cristalina",
             type: "Ataque",
             range: "12m / Corpo a corpo",
-            effect: "3d6 frio e 2 ataques. Execução progressiva em alvos fragilizados. Derrotar um alvo pode estilhaçar em área.",
+            effect: "Ações: Você pode realizar 2 ataques por turno com suas armas de gelo. Dano: 3d6 frio por impacto. Execução: Causa +1d6 extra para cada condição de movimento negativa (Lento, Imobilizado) no alvo. Estilhaçar: Se derrotar um inimigo, ele explode causando 2d6 de dano de frio em área 3m.",
             res: 4
           }
         ]
@@ -732,7 +732,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Controle",
             range: "9m",
-            effect: "Teste de Força: Imobilizado ou −3m deslocamento. O alvo sofre −1 Defesa.",
+            effect: "Teste (Força): Se falhar, fica Imobilizado. Se passar, sofre apenas -3m de Deslocamento. Debuff: O alvo sofre -1 de Defesa enquanto estiver sob o efeito do gelo.",
             res: 1
           },
           {
@@ -741,7 +741,7 @@ const SKILLS = {
             prereq: "Prisão de Gelo",
             type: "Controle",
             range: "9m",
-            effect: "Imobilizado por 2 rodadas ou Lento. Pressão: 1d6 por rodada. Alvos presos recebem +1d6.",
+            effect: "Controle: O alvo fica Imobilizado por 2 rodadas (ou Lento se passar no teste). Dano Contínuo: Causa 1d6 de dano de frio por rodada. Combo: Alvos já presos ou imobilizados recebem +1d6 de dano adicional de qualquer fonte.",
             res: 2
           },
           {
@@ -750,7 +750,7 @@ const SKILLS = {
             prereq: "Cárcere Gélido",
             type: "Controle",
             range: "9m",
-            effect: "Imobiliza por 1 a 2 rodadas. Exige alto dano para escapar. Ao romper, causa 2d6.",
+            effect: "Duração: Imobiliza o alvo por até 2 rodadas. Resistência: O gelo possui PV próprio e exige alto dano para ser quebrado de fora. Ruptura: Quando a prisão se rompe (por dano ou fim da duração), causa 2d6 de dano de frio imediato ao alvo.",
             res: 3
           },
           {
@@ -759,7 +759,7 @@ const SKILLS = {
             prereq: "Prisão Cristalina",
             type: "Controle",
             range: "9m",
-            effect: "Teste: Congelado ou Imobilizado. Fragilidade: +2d6. Ao estilhaçar, causa 2d6 em área.",
+            effect: "Teste (Força): Se falhar, fica Congelado. Se passar, fica Imobilizado. Fragilidade: O alvo sofre +2d6 de dano de todos os ataques recebidos. Estilhaçar: Ao encerrar o efeito, a prisão explode causando 2d6 de dano de frio em todos os inimigos a até 3m.",
             res: 4
           }
         ]
