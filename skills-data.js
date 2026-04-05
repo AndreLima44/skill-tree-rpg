@@ -906,7 +906,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Ataque",
             range: "Corpo a corpo",
-            effect: "2d6 físico. O alvo sofre −1 Defesa no próximo turno.",
+            effect: "Dano: 2d6 físico. Debuff: O alvo sofre -1 de Defesa até o início do seu próximo turno.",
             res: 1
           },
           {
@@ -915,7 +915,7 @@ const SKILLS = {
             prereq: "Golpe Brutal",
             type: "Ataque",
             range: "Corpo a corpo",
-            effect: "2d6 + 2 físico. Ignora 1 Defesa. Contra defesa pesada: +1d6.",
+            effect: "Dano: 2d6 + 2 físico. Tática: Ignora 1 ponto de Defesa. Esmagar: Contra alvos com Defesa Pesada (ou Escudos), causa +1d6 de dano adicional.",
             res: 2
           },
           {
@@ -924,7 +924,7 @@ const SKILLS = {
             prereq: "Força Descomunal",
             type: "Ataque",
             range: "Corpo a corpo",
-            effect: "Move até 6m e ataca com 3d6 físico. Colisão: +2d6.",
+            effect: "Mobilidade: Você pode se mover até 6m em linha reta como parte do ataque. Dano: 3d6 físico. Colisão: Se o alvo bater em uma estrutura ou outra criatura, sofre +2d6 de dano.",
             res: 3
           },
           {
@@ -933,7 +933,7 @@ const SKILLS = {
             prereq: "Investida Devastadora",
             type: "Ataque",
             range: "Corpo a corpo",
-            effect: "Por 2 rodadas: +2 ataques/turno e +2d6 dano. Alvo abaixo de 50% PV sofre +2d6.",
+            effect: "Estado (2 rodadas): Você ganha +2 ataques por turno e +2d6 de dano em todos os golpes. Execução: Alvos com menos de 50% de PV sofrem +2d6 de dano extra.",
             res: 4
           }
         ]
@@ -947,7 +947,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Defesa",
             range: "Pessoal",
-            effect: "RD 2.",
+            effect: "Proteção: Você recebe RD 2 contra qualquer dano físico.",
             res: 1
           },
           {
@@ -956,7 +956,7 @@ const SKILLS = {
             prereq: "Corpo Endurecido",
             type: "Defesa",
             range: "Pessoal",
-            effect: "RD 3. 1x/turno reduz +1d6.",
+            effect: "Proteção: RD 3. Casca Grossa: 1x por turno, você pode reduzir o dano de um ataque recebido em +1d6 adicional.",
             res: 2
           },
           {
@@ -965,7 +965,7 @@ const SKILLS = {
             prereq: "Resistência Sobre-Humana",
             type: "Defesa",
             range: "Pessoal",
-            effect: "RD 4. Não pode ser derrubado. Imune a controle leve.",
+            effect: "Proteção: RD 4. Estabilidade: Você não pode ser derrubado ou movido contra sua vontade. Imunidade: Você é imune a condições de controle leve (como Lento ou Encharcado).",
             res: 3
           },
           {
@@ -974,7 +974,7 @@ const SKILLS = {
             prereq: "Corpo Inquebrável",
             type: "Defesa",
             range: "Pessoal",
-            effect: "RD 5. Ignora controle leve. 1x/rodada reduz 2d6.",
+            effect: "Proteção: RD 5. Inabalável: Você ignora qualquer penalidade de movimento ou condições de controle leve. Absorção: 1x por rodada, você pode reduzir o dano de um impacto em 2d6.",
             res: 4
           }
         ]
@@ -988,7 +988,7 @@ const SKILLS = {
             prereq: "Nenhum",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "+1 ação leve por turno.",
+            effect: "Economia: Você ganha +1 Ação Leve por turno para usar com movimento ou utilitários.",
             res: 1
           },
           {
@@ -997,7 +997,7 @@ const SKILLS = {
             prereq: "Reflexo Instintivo",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "+1 ataque adicional e +3m deslocamento.",
+            effect: "Ofensiva: Você ganha +1 ataque adicional por turno. Mobilidade: Seu Deslocamento base aumenta em +3m.",
             res: 2
           },
           {
@@ -1006,7 +1006,7 @@ const SKILLS = {
             prereq: "Velocidade Sobre-Humana",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "Move entre ataques sem AoO e recebe +1 ataque.",
+            effect: "Ofensiva: Você ganha +1 ataque adicional por turno (acumula com o anterior). Fluidez: Você pode se mover entre seus ataques sem provocar ataques de oportunidade.",
             res: 3
           },
           {
@@ -1015,7 +1015,7 @@ const SKILLS = {
             prereq: "Movimento Relâmpago",
             type: "Mobilidade",
             range: "Pessoal",
-            effect: "+2 ataques adicionais. Se acertar 3 vezes: +2d6. Em sequência pode ganhar +1 ataque extra.",
+            effect: "Ofensiva: Você ganha +2 ataques adicionais por turno. Finalizador: Se acertar o mesmo alvo 3 vezes, causa +2d6 de dano. Impulso: Se derrotar um inimigo em uma sequência, ganha +1 ataque extra imediato.",
             res: 4
           }
         ]
