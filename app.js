@@ -191,6 +191,45 @@ function renderTab(tab) {
   return html;
 }
 
+
+
+//salvar no supabase quando desbloquear ou bloquear uma skill, e atualizar a interface
+async function saveCharacterSheet() {
+    const id = selectedUserId || (currentUser ? currentUser.id : null);
+    if (!id) return;
+
+    // 1. Captura os ataques da UI (você já tem parte dessa lógica no app.js)
+    const attackCards = document.querySelectorAll('.attack-card-mini');
+    const updatedAttacks = Array.from(attackCards).map(card => ({
+        nome: card.querySelector('input[placeholder="Nome do Ataque"]').value,
+        teste: card.querySelector('input[placeholder="3d20+5"]').value,
+        dano: card.querySelector('input[placeholder="2d6"]').value,
+        crit: card.querySelector('input[placeholder="x2"]').value,
+        alcance: card.querySelector('input[placeholder="Curto"]').value
+    }));
+
+    // 2. Captura as perícias (ajuste os seletores conforme seu HTML)
+    const skillData = {};
+    document.querySelectorAll('.skill-input').forEach(input => {
+        skillData[input.dataset.skillName] = parseInt(input.value) || 0;
+    });
+
+    // 3. Envia para o Supabase (Upsert: insere ou atualiza)
+    const { error } = await supabaseClient
+        .from('characters')
+        .upsert({
+            user_id: id,
+            name: document.getElementById('char-name').value,
+            attacks: updatedAttacks,
+            skills: skillData,
+            // Adicione os outros campos (hp, atributos, etc) aqui
+        });
+
+    if (error) console.error("Erro ao salvar:", error);
+    else alert("Ficha salva com sucesso!");
+}
+
+
 function renderTabs() {
   const container = document.getElementById('tabs-container');
   container.innerHTML = Object.entries(TAB_META).map(([key, label]) => {
@@ -570,4 +609,81 @@ function updateStat(id, delta) {
   const el = document.getElementById(id);
   if (el) el.value = Math.max(0, (parseInt(el.value) || 0) + delta);
 }
+
+window.saveCharacterData = async function() {
+    // Identifica qual ID usar (se o admin está editando alguém ou se é o próprio player)
+    const id = selectedUserId || (currentUser ? currentUser.id : null);
+    
+    if (!id) {
+        alert("Erro: Usuário não identificado.");
+        return;
+    }
+
+    try {
+        // 1. Capturar Perícias
+        const skillInputs = document.querySelectorAll('.skill-input');
+        const skillsObj = {};
+        skillInputs.forEach(input => {
+            const name = input.getAttribute('data-skill');
+            if (name) {
+                skillsObj[name] = parseInt(input.value) || 0;
+            }
+        });
+
+        // 2. Capturar Ataques
+        const attackCards = document.querySelectorAll('.attack-card-mini');
+        const updatedAttacks = Array.from(attackCards).map(card => ({
+            nome: card.querySelector('input[placeholder="Nome do Ataque"]')?.value || "",
+            teste: card.querySelector('input[placeholder="3d20+5"]')?.value || "",
+            dano: card.querySelector('input[placeholder="2d6"]')?.value || "",
+            crit: card.querySelector('input[placeholder="x2"]')?.value || "",
+            alcance: card.querySelector('input[placeholder="Curto"]')?.value || ""
+        }));
+
+        // 3. Montar o objeto completo para o banco
+        const characterData = {
+            user_id: id,
+            name: document.getElementById('char-name')?.value || "Novo Personagem",
+            archetype: document.getElementById('char-archetype')?.value || "Nenhum",
+            level: parseInt(document.getElementById('char-level')?.value) || 1,
+            
+            // Atributos (Pega o texto dentro do <span>)
+            strength: parseInt(document.getElementById('stat-strength')?.textContent) || 0,
+            dexterity: parseInt(document.getElementById('stat-dexterity')?.textContent) || 0,
+            constitution: parseInt(document.getElementById('stat-constitution')?.textContent) || 0,
+            intelligence: parseInt(document.getElementById('stat-intelligence')?.textContent) || 0,
+            presence: parseInt(document.getElementById('stat-presence')?.textContent) || 0,
+            
+            // Status
+            hp_current: parseInt(document.getElementById('hp-curr')?.value) || 20,
+            hp_max: parseInt(document.getElementById('hp-max')?.value) || 20,
+            energy_current: parseInt(document.getElementById('en-curr')?.value) || 10,
+            energy_max: parseInt(document.getElementById('en-max')?.value) || 10,
+            
+            // Defesas
+            defense: parseInt(document.getElementById('stat-def')?.value) || 10,
+            damage_reduction: parseInt(document.getElementById('stat-rd')?.value) || 0,
+            movement_speed: parseFloat(document.getElementById('stat-mov')?.value) || 9.0,
+            
+            // Dados Dinâmicos
+            skills: skillsObj,
+            attacks: updatedAttacks
+        };
+
+        // 4. Enviar para o Supabase
+        const { error } = await supabaseClient
+            .from('characters')
+            .upsert(characterData, { onConflict: 'user_id' });
+
+        if (error) throw error;
+
+        alert("Ficha salva com sucesso!");
+        
+    } catch (err) {
+        console.error("Erro ao salvar ficha:", err);
+        alert("Erro ao salvar: " + err.message);
+    }
+};
+
 checkSession();
+
