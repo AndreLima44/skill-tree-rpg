@@ -725,3 +725,22 @@ body {
   }
 }
 .attack-area { background: rgba(10,10,25,0.4); border: 1px solid rgba(100,120,255,0.12); color: white; border-radius: 6px; padding: 8px; font-size: 13px; width: 100%; min-height: 70px; resize: none; }
+
+.save-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255,255,255,0.2);
+  cursor: pointer;
+}
+
+.save-btn:hover {
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+  transform: translateY(-2px);
+}
