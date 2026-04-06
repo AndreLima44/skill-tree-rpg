@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ordem Paranormal - Skill Tree</title>
+  <title>Elemento do Frio RPG - Skill Tree</title>
 
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;600;700&family=Cinzel:wght@400;700;900&family=Mukta:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Mukta:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -47,6 +48,13 @@
     </nav>
 
     <main class="flex-1 px-4 pb-8 overflow-auto scroll-container" id="main-content"></main>
+    
+    <div class="flex justify-end p-4">
+  <button onclick="saveCharacterData()" class="save-btn">
+    <i data-lucide="save" class="w-4 h-4 mr-2"></i>
+    Salvar Ficha
+  </button>
+</div>
   </div>
 
   <script src="skills-data.js"></script>
