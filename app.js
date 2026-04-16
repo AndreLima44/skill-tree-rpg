@@ -398,13 +398,15 @@ async function uploadCharacterAvatar(userId) {
     }
 
     const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const filePath = `${userId}/perfil.${fileExt}`;
+
+    // 👇 AQUI está a mudança importante
+    const filePath = `${userId}/perfil-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabaseClient.storage
         .from('avatars')
         .upload(filePath, file, {
             cacheControl: '3600',
-            upsert: true,
+            upsert: false,
             contentType: file.type
         });
 
