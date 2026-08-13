@@ -19,7 +19,11 @@ let dataReady = false;
 let isSaving = false;
 let isDirty = false;
 let autosaveTimer = null;
-const AUTOSAVE_DELAY_MS = 2000;
+let loadedUpdatedAt = null;
+let dirtyFields = new Set();
+let realtimeChannel = null;
+let isApplyingRemoteUpdate = false;
+const AUTOSAVE_DELAY_MS = 1200;
 
 function setSaveStatus(status) {
   // status: 'loading' | 'saved' | 'dirty' | 'saving' | 'error'
@@ -44,8 +48,9 @@ function setSaveStatus(status) {
   }
 }
 
-function markDirtyAndScheduleAutosave() {
-  if (!dataReady || currentTab !== 'personagem') return;
+function markDirtyAndScheduleAutosave(field = '*') {
+  if (!dataReady || currentTab !== 'personagem' || isApplyingRemoteUpdate) return;
+  dirtyFields.add(field);
   isDirty = true;
   setSaveStatus('dirty');
 
@@ -53,6 +58,51 @@ function markDirtyAndScheduleAutosave() {
   autosaveTimer = setTimeout(() => {
     window.saveCharacterData({ silent: true });
   }, AUTOSAVE_DELAY_MS);
+}
+
+function getDirtyFieldFromElement(target) {
+  if (target.closest('.skill-row')) return 'skills';
+  if (target.closest('.attack-editor-card')) return 'attacks';
+  const map = {
+    'char-name':'name','char-origin':'origin','char-class':'class_name','char-archetype':'archetype','char-player':'player_name','char-level':'level',
+    'stat-strength':'strength','stat-dexterity':'dexterity','stat-constitution':'constitution','stat-intelligence':'intelligence','stat-presence':'presence',
+    'hp-curr':'hp_current','hp-max':'hp_max','en-curr':'energy_current','en-max':'energy_max','stat-def':'defense','stat-rd':'damage_reduction','stat-dodge':'dodge','stat-block':'block','stat-mov':'movement_speed','char-avatar':'avatar_url'
+  };
+  return map[target.id] || '*';
+}
+
+function updateHeaderIdentity() {
+  const avatar = document.getElementById('header-avatar');
+  const title = document.getElementById('page-title');
+  if (title && characterData?.name) title.textContent = characterData.name;
+  if (!avatar) return;
+  const initial = (characterData?.name || '?').charAt(0).toUpperCase();
+  avatar.innerHTML = characterData?.avatar_url
+    ? `<img src="${characterData.avatar_url}" alt="Avatar">`
+    : `<span>${initial}</span>`;
+}
+
+function subscribeToCharacterRealtime(userId) {
+  if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+  realtimeChannel = supabaseClient.channel(`character:${userId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'characters', filter: `user_id=eq.${userId}` }, async (payload) => {
+      if (!payload.new) return;
+      const remote = payload.new;
+      if (loadedUpdatedAt && remote.updated_at && new Date(remote.updated_at) <= new Date(loadedUpdatedAt)) return;
+      if (isDirty) {
+        setSaveStatus('error');
+        console.warn('Conflito: existe uma versão mais nova no servidor. O salvamento local foi bloqueado.');
+        return;
+      }
+      isApplyingRemoteUpdate = true;
+      characterData = { ...characterData, ...remote, skills: remote.skills || {}, attacks: remote.attacks || characterAttacks };
+      characterAttacks = [...characterData.attacks];
+      loadedUpdatedAt = remote.updated_at || loadedUpdatedAt;
+      updateHeaderIdentity();
+      if (currentTab === 'personagem') switchTab('personagem');
+      if (currentTab === 'escudo' && currentRole === 'admin') loadMasterShieldData();
+      isApplyingRemoteUpdate = false;
+    }).subscribe();
 }
 
 // Backup local (rede de segurança extra). Isso NÃO substitui o Supabase,
@@ -604,7 +654,19 @@ function renderCharacterSheet() {
     ["Medicina","INT"],["Percepção","PRE"],["Pilotagem","AGI"],["Pontaria","AGI"],
     ["Profissão","INT"],["Reflexos","AGI"],["Religião","PRE"],["Ressonância","INT"],
     ["Sobrevivência","INT"],["Tática","INT"],["Tecnologia","INT"],["Vontade","PRE"]
-  ];
+  ].sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+
+  window.toggleSkillTraining = function(skillName) {
+    const checkbox = document.getElementById(`skill-trained-${skillName}`);
+    const bonusInput = document.getElementById(`skill-bonus-${skillName}`);
+    if (!checkbox || !bonusInput) return;
+    const current = parseInt(bonusInput.value) || 0;
+    const wasTrained = bonusInput.dataset.trained === 'true';
+    const base = wasTrained ? current - 5 : current;
+    bonusInput.value = checkbox.checked ? base + 5 : base;
+    bonusInput.dataset.trained = checkbox.checked ? 'true' : 'false';
+    markDirtyAndScheduleAutosave('skills');
+  };
 
   const skillsHtml = skillsList.map(([name, attr]) => {
     const savedSkill = characterData.skills?.[name];
@@ -630,16 +692,20 @@ function renderCharacterSheet() {
         <span class="skill-attr">${attr}</span>
 
         <input
+          id="skill-bonus-${name}"
           class="skill-cell skill-bonus"
           type="text"
           data-skill="${name}"
+          data-trained="${trained ? 'true' : 'false'}"
           value="${bonus}"
         >
 
         <input
+          id="skill-trained-${name}"
           class="skill-check skill-trained"
           type="checkbox"
           data-skill="${name}"
+          onchange="toggleSkillTraining('${name}')"
           ${trained ? 'checked' : ''}
         >
 
@@ -701,48 +767,20 @@ function renderCharacterSheet() {
 
   return `
     <div class="sheet-wrapper fade-in p-4">
-      <div class="glow-box p-4 mb-5">
-        <div class="flex flex-col xl:flex-row gap-4 items-start char-info-block">
-
-          <div class="w-full xl:w-[150px] flex flex-row xl:flex-col items-center gap-3 xl:gap-0">
-            <div class="char-avatar-box rounded-xl overflow-hidden border border-white/10 bg-black/20 flex items-center justify-center mb-0 xl:mb-3 flex-shrink-0">
-              ${
-                characterData.avatar_url
-                  ? `<img src="${characterData.avatar_url}" alt="Avatar do personagem" class="w-full h-full object-cover">`
-                  : `<span class="text-xs opacity-60 text-center px-3">Sem foto</span>`
-              }
-            </div>
-
-            <div class="flex-1 xl:w-full min-w-0">
-              <label class="sheet-info-label text-center w-full hidden xl:block">Foto do Personagem</label>
-              <input id="char-avatar" class="field-input text-sm" type="file" accept="image/*">
-            </div>
+      <div class="glow-box character-summary p-3 mb-3">
+        <div class="character-fields-grid grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div class="col-span-2 lg:col-span-1">
+            <label class="sheet-info-label">Personagem</label>
+            <input id="char-name" class="field-input" type="text" value="${characterData.name || ''}">
           </div>
-
-          <div class="flex-1 w-full">
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div>
-                <label class="sheet-info-label">Personagem</label>
-                <input id="char-name" class="field-input" type="text" value="${characterData.name || ''}">
-              </div>
-              <div>
-                <label class="sheet-info-label">Origem</label>
-                <input id="char-origin" class="field-input" type="text" value="${characterData.origin || ''}">
-              </div>
-              <div>
-                <label class="sheet-info-label">Classe</label>
-                <input id="char-class" class="field-input" type="text" value="${characterData.class_name || ''}">
-              </div>
-              <div>
-                <label class="sheet-info-label">Trilha</label>
-                <input id="char-archetype" class="field-input" type="text" value="${characterData.archetype || ''}">
-              </div>
-              <div>
-                <label class="sheet-info-label">Jogador</label>
-                <input id="char-player" class="field-input" type="text" value="${characterData.player_name || ''}">
-              </div>
-            </div>
-          </div>
+          <div><label class="sheet-info-label">Origem</label><input id="char-origin" class="field-input" type="text" value="${characterData.origin || ''}"></div>
+          <div><label class="sheet-info-label">Classe</label><input id="char-class" class="field-input" type="text" value="${characterData.class_name || ''}"></div>
+          <div><label class="sheet-info-label">Trilha</label><input id="char-archetype" class="field-input" type="text" value="${characterData.archetype || ''}"></div>
+          <div><label class="sheet-info-label">Jogador</label><input id="char-player" class="field-input" type="text" value="${characterData.player_name || ''}"></div>
+        </div>
+        <div class="character-avatar-control mt-2">
+          <label for="char-avatar" class="avatar-change-label">Alterar foto</label>
+          <input id="char-avatar" type="file" accept="image/*" class="avatar-file-input">
         </div>
       </div>
 
@@ -901,124 +939,64 @@ window.updateStat = function(id, delta) {
   if (el) {
     let currentVal = parseInt(el.value) || 0;
     el.value = Math.max(0, currentVal + delta);
+    markDirtyAndScheduleAutosave(getDirtyFieldFromElement(el));
   }
 };
 
 window.saveCharacterData = async function(options = {}) {
-    const silent = options.silent === true;
-    const id = selectedUserId || (currentUser ? currentUser.id : null);
+  const silent = options.silent === true;
+  const id = selectedUserId || currentUser?.id;
+  if (!id || !dataReady) return;
+  if (isSaving) { if (dirtyFields.size) markDirtyAndScheduleAutosave(); return; }
+  if (!dirtyFields.size && !document.getElementById('char-avatar')?.files?.[0]) { setSaveStatus('saved'); return; }
 
-    if (!id) {
-        if (!silent) alert("Erro: Usuário não identificado.");
-        return;
+  isSaving = true;
+  if (autosaveTimer) clearTimeout(autosaveTimer);
+  setSaveStatus('saving');
+  try {
+    const patch = {};
+    const has = (key) => dirtyFields.has(key) || dirtyFields.has('*');
+    const text = (id, fallback='') => document.getElementById(id)?.value ?? fallback;
+    const int = (id, fallback=0) => parseInt(text(id, fallback)) || 0;
+    const num = (id, fallback=0) => parseFloat(String(text(id, fallback)).replace(',', '.').replace('m','')) || 0;
+    const fields = {
+      name: () => text('char-name','Novo Personagem'), origin: () => text('char-origin'), class_name: () => text('char-class'), archetype: () => text('char-archetype'), player_name: () => text('char-player'), level: () => int('char-level',1),
+      strength: () => int('stat-strength'), dexterity: () => int('stat-dexterity'), constitution: () => int('stat-constitution'), intelligence: () => int('stat-intelligence'), presence: () => int('stat-presence'),
+      hp_current: () => int('hp-curr'), hp_max: () => int('hp-max'), energy_current: () => int('en-curr'), energy_max: () => int('en-max'), defense: () => int('stat-def',10), damage_reduction: () => int('stat-rd'), dodge: () => int('stat-dodge',10), block: () => int('stat-block'), movement_speed: () => num('stat-mov',9)
+    };
+    Object.entries(fields).forEach(([key, getter]) => { if (has(key)) patch[key] = getter(); });
+    if (has('skills')) {
+      const skills = {};
+      document.querySelectorAll('.skill-row').forEach(row => {
+        const bonus = row.querySelector('.skill-bonus'); const trained = row.querySelector('.skill-trained'); const others = row.querySelector('.skill-others'); const attr = row.querySelector('.skill-attr');
+        if (bonus?.dataset.skill) skills[bonus.dataset.skill] = { bonus: parseInt(bonus.value)||0, trained: !!trained?.checked, others: parseInt(others?.value)||0, attr: attr?.textContent||'' };
+      });
+      patch.skills = skills;
     }
+    if (has('attacks')) { window.saveCurrentAttacks(); patch.attacks = characterAttacks; }
+    if (document.getElementById('char-avatar')?.files?.[0]) patch.avatar_url = await uploadCharacterAvatar(id);
+    if (!Object.keys(patch).length) { isSaving=false; return; }
 
-    // Proteção contra o bug de sobrescrita: nunca salvar antes da ficha
-    // atual terminar de carregar do banco, e nunca disparar dois
-    // salvamentos ao mesmo tempo.
-    if (!dataReady) {
-        if (!silent) alert("Aguarde a ficha terminar de carregar antes de salvar.");
-        return;
+    const { data, error } = await supabaseClient.rpc('save_character_patch', { p_user_id: id, p_expected_updated_at: loadedUpdatedAt, p_patch: patch });
+    if (error) throw error;
+    if (!data?.ok) {
+      backupCharacterLocally(id, { conflict: true, patch, server_updated_at: data?.updated_at });
+      dirtyFields.clear(); isDirty = false;
+      await loadCharacterData();
+      setSaveStatus('error');
+      if (!silent) alert('A ficha foi alterada em outro lugar. A versão mais recente foi carregada e sua alteração local ficou no backup.');
+      return;
     }
-    if (isSaving) {
-        // Já existe um salvamento em andamento; a próxima alteração vai
-        // reagendar o autosave normalmente.
-        return;
-    }
-
-    isSaving = true;
-    if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
-    setSaveStatus('saving');
-
-    try {
-        const skillsObj = {};
-
-document.querySelectorAll('.skill-row').forEach(row => {
-    const bonusInput = row.querySelector('.skill-bonus');
-    const trainedInput = row.querySelector('.skill-trained');
-    const othersInput = row.querySelector('.skill-others');
-    const attrEl = row.querySelector('.skill-attr');
-
-    const name = bonusInput?.getAttribute('data-skill');
-
-    if (name) {
-        skillsObj[name] = {
-            bonus: parseInt(bonusInput?.value) || 0,
-            trained: !!trainedInput?.checked,
-            others: parseInt(othersInput?.value) || 0,
-            attr: attrEl?.textContent || ''
-        };
-    }
-});
-
-        window.saveCurrentAttacks();
-
-
-        const avatarUrl = await uploadCharacterAvatar(id);
-
-        const characterPayload = {
-            user_id: id,
-
-            name: document.getElementById('char-name')?.value || "Novo Personagem",
-            origin: document.getElementById('char-origin')?.value || "",
-            class_name: document.getElementById('char-class')?.value || "",
-            archetype: document.getElementById('char-archetype')?.value || "",
-            player_name: document.getElementById('char-player')?.value || "",
-            level: parseInt(document.getElementById('char-level')?.value) || 1,
-
-            strength: parseInt(document.getElementById('stat-strength')?.value) || 0,
-            dexterity: parseInt(document.getElementById('stat-dexterity')?.value) || 0,
-            constitution: parseInt(document.getElementById('stat-constitution')?.value) || 0,
-            intelligence: parseInt(document.getElementById('stat-intelligence')?.value) || 0,
-            presence: parseInt(document.getElementById('stat-presence')?.value) || 0,
-
-            hp_current: parseInt(document.getElementById('hp-curr')?.value) || 0,
-            hp_max: parseInt(document.getElementById('hp-max')?.value) || 0,
-            energy_current: parseInt(document.getElementById('en-curr')?.value) || 0,
-            energy_max: parseInt(document.getElementById('en-max')?.value) || 0,
-
-            defense: parseInt(document.getElementById('stat-def')?.value) || 10,
-            damage_reduction: parseInt(document.getElementById('stat-rd')?.value) || 0,
-            dodge: parseInt(document.getElementById('stat-dodge')?.value) || 10,
-            block: parseInt(document.getElementById('stat-block')?.value) || 0,
-            movement_speed: parseFloat(
-                String(document.getElementById('stat-mov')?.value || '9').replace(',', '.').replace('m', '')
-            ) || 9,
-            
-            avatar_url: avatarUrl,
-            skills: skillsObj,
-            attacks: characterAttacks
-        };
-
-        const { error } = await supabaseClient
-            .from('characters')
-            .upsert(characterPayload, { onConflict: 'user_id' });
-
-        if (error) {
-            throw error;
-        }
-
-        characterData = {
-            ...characterData,
-            ...characterPayload
-        };
-
-        backupCharacterLocally(id, characterPayload);
-        isDirty = false;
-        setSaveStatus('saved');
-
-        if (!silent) alert("Ficha salva com sucesso!");
-
-    } catch (err) {
-        console.error("Erro ao salvar ficha:", err);
-        setSaveStatus('error');
-        // Mesmo com erro no Supabase, guardamos localmente para não perder
-        // o que o jogador digitou.
-        try { backupCharacterLocally(id, { attempted: true, error: err.message }); } catch(e) {}
-        if (!silent) alert("Erro ao salvar ficha: " + err.message);
-    } finally {
-        isSaving = false;
-    }
+    characterData = { ...characterData, ...patch, updated_at: data.updated_at };
+    loadedUpdatedAt = data.updated_at;
+    dirtyFields.clear(); isDirty = false;
+    backupCharacterLocally(id, patch);
+    updateHeaderIdentity(); setSaveStatus('saved');
+    if (!silent) alert('Ficha salva com sucesso!');
+  } catch (err) {
+    console.error('Erro ao salvar ficha:', err); setSaveStatus('error');
+    if (!silent) alert('Erro ao salvar ficha: ' + err.message);
+  } finally { isSaving = false; }
 };
 
 async function loadCharacterData() {
@@ -1046,6 +1024,8 @@ async function loadCharacterData() {
         };
 
         characterAttacks = [...characterData.attacks];
+        loadedUpdatedAt = data.updated_at || null;
+        updateHeaderIdentity();
     } else {
         characterData = {
             name: 'Novo Personagem',
@@ -1087,6 +1067,8 @@ async function loadCharacterData() {
     // no banco (ou é comprovadamente uma ficha nova).
     dataReady = true;
     isDirty = false;
+    dirtyFields.clear();
+    subscribeToCharacterRealtime(selectedUserId);
     setSaveStatus('saved');
 }
 
@@ -1096,11 +1078,11 @@ async function loadCharacterData() {
 // na hora (toggleSkill/saveSkills), então não precisa passar por aqui.
 document.addEventListener('input', (e) => {
   if (!e.target.closest('#main-content')) return;
-  markDirtyAndScheduleAutosave();
+  markDirtyAndScheduleAutosave(getDirtyFieldFromElement(e.target));
 });
 document.addEventListener('change', (e) => {
   if (!e.target.closest('#main-content')) return;
-  markDirtyAndScheduleAutosave();
+  markDirtyAndScheduleAutosave(getDirtyFieldFromElement(e.target));
 });
 
 checkSession();
