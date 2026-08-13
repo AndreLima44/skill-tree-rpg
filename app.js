@@ -74,7 +74,9 @@ function getDirtyFieldFromElement(target) {
 function updateHeaderIdentity() {
   const avatar = document.getElementById('header-avatar');
   const title = document.getElementById('page-title');
-  if (title && characterData?.name) title.textContent = characterData.name;
+  if (title) title.textContent = characterData?.name || 'Elemento do Frio';
+  const userLabel = document.getElementById('user-label');
+  if (userLabel) userLabel.textContent = [characterData?.player_name, currentUser?.email].filter(Boolean).join(' · ');
   if (!avatar) return;
   const initial = (characterData?.name || '?').charAt(0).toUpperCase();
   avatar.innerHTML = characterData?.avatar_url
@@ -227,7 +229,8 @@ personagem: '👤 Ficha de Personagem', // Nova aba
   agua: '💧 Água',
   fogo: '🔥 Fogo',
   universais: '✨ Universais',
-  forca: '💪 Força Inata'
+  forca: '💪 Força Inata',
+  regras: '📖 Regras & Combos'
 };
 
 function getSkillKey(tab, skillName) {
@@ -267,6 +270,90 @@ function normalizeSkill(skill) {
   };
 }
 
+
+function escapeHtml(value = '') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+function getRuleBook() { return window.RuleBook || null; }
+function getRule(ruleId) { return getRuleBook()?.getById(ruleId) || null; }
+function normalizeRuleId(value='') { return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
+function findRuleForSkill(skillName) {
+  const book=getRuleBook(); if(!book) return null;
+  const direct=book.getById(normalizeRuleId(skillName));
+  if(direct) return direct;
+  return (book.search(skillName,{limit:5})||[]).map(x=>x.rule).find(r=>normalizeRuleId(r.title)===normalizeRuleId(skillName)) || null;
+}
+function getRuleTerms() {
+  const book=getRuleBook(); if(!book) return [];
+  return book.getAll().flatMap(r=>[r.title,...(r.aliases||[])]).filter(Boolean).sort((a,b)=>b.length-a.length);
+}
+function escapeAttr(v=''){ return escapeHtml(v).replace(/`/g,'&#096;'); }
+function linkifyRules(text='') {
+  let out=escapeHtml(text); const book=getRuleBook(); if(!book) return out;
+  for(const term of getRuleTerms()) {
+    const results=book.search(term,{limit:3})||[];
+    const exact=results.map(x=>x.rule).find(r=>String(r.title).toLocaleLowerCase('pt-BR')===String(term).toLocaleLowerCase('pt-BR') || (r.aliases||[]).some(a=>String(a).toLocaleLowerCase('pt-BR')===String(term).toLocaleLowerCase('pt-BR')));
+    if(!exact) continue;
+    const safe=String(term).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    out=out.replace(new RegExp(`(^|[^\\wÀ-ÿ])(${safe})(?=$|[^\\wÀ-ÿ])`,'gi'),(m,p,t)=>`${p}<button class="rule-term" type="button" data-rule-id="${exact.id}">${t}</button>`);
+  }
+  return out;
+}
+let ruleHistory=[];
+let rulesSearchTimer=null;
+function ruleCategoryLabel(category){ return getRuleBook()?.categories?.[category] || category || 'Regra'; }
+function renderRulesPage(){
+ const book=getRuleBook();
+ if(!book) return `<section class="rulebook-shell"><p class="rules-empty">Carregando Livro de Regras...</p></section>`;
+ const categories=Object.entries(book.categories||{});
+ const popular=['pr','rd','ressonancia','esquiva','congelado','imobilizado','vanguarda','combo'];
+ return `<section class="rulebook-shell">
+   <header class="rulebook-header"><div><div class="rules-eyebrow">ELEMENTO DO FRIO</div><h1>📚 Livro de Regras</h1><p>Consulte regras, condições, habilidades, classes, trilhas e combos sem sair da sessão.</p></div></header>
+   <div class="rule-search"><input id="rules-search" type="search" autocomplete="off" placeholder="Pesquisar uma regra, condição, habilidade, classe..." oninput="scheduleRuleSearch(this.value)"></div>
+   <div class="rule-category-row">${categories.map(([id,label])=>`<button class="rule-category-chip" onclick="filterRulesCategory('${id}')">${escapeHtml(label)}</button>`).join('')}</div>
+   <div class="rulebook-popular"><span>Mais usadas:</span>${popular.map(id=>{const r=book.getById(id);return r?`<button data-rule-id="${id}">${escapeHtml(r.title)}</button>`:''}).join('')}</div>
+   <div id="rules-results" class="rules-results"><p class="rules-empty">Pesquise um termo ou escolha uma categoria.</p></div>
+ </section>`;
+}
+function scheduleRuleSearch(query){ clearTimeout(rulesSearchTimer); rulesSearchTimer=setTimeout(()=>searchRules(query),180); }
+function searchRules(query='',options={}){
+ const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
+ const q=String(query).trim(); if(!q){box.innerHTML='<p class="rules-empty">Digite uma regra para pesquisar.</p>';return;}
+ const results=book.search(q,{...options,limit:30})||[];
+ box.innerHTML=results.length?results.map(({rule})=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p><div class="rule-card-related">${book.getRelated(rule.id).slice(0,4).map(r=>`<span>${escapeHtml(r.title)}</span>`).join('')}</div>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join(''):'<p class="rules-empty">Nenhuma regra encontrada.</p>';
+}
+function filterRulesCategory(category){
+ const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
+ const rules=book.getByCategory(category)||[];
+ box.innerHTML=rules.map(rule=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join('')||'<p class="rules-empty">Nenhuma regra nesta categoria.</p>';
+}
+function openRuleById(id,push=true){
+ const rule=getRule(id); if(!rule)return;
+ if(push) ruleHistory.push(id);
+ const main=document.getElementById('main-content'); if(!main)return;
+ const book=getRuleBook(), related=book.getRelated(id)||[];
+ const section=(title,content)=>content&&content.length?`<section class="rule-section"><h3>${title}</h3>${content}</section>`:'';
+ // linkifyRules() já escapa o texto original e gera apenas os botões seguros
+ // dos termos registrados. Portanto, não devemos escapar novamente aqui.
+ const list=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+ const meta=[['Elemento',rule.element],['Grau',rule.grade],['Tipo',rule.type],['Ação',rule.action],['Alcance',rule.range],['Duração',rule.duration],['Pré-requisito',rule.prerequisite]].filter(x=>x[1]);
+ main.innerHTML=`<section class="rule-detail"><div class="rule-breadcrumb"><button onclick="backFromRule()">← Voltar</button><span>Livro de Regras › ${escapeHtml(ruleCategoryLabel(rule.category))} › ${escapeHtml(rule.title)}</span></div><div class="rule-detail-head"><div><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><h1>${escapeHtml(rule.title)}</h1><p>${escapeHtml(rule.summary||'')}</p></div>${rule.status==='needs-review'?'<div class="rule-status-review">⚠ Regra pendente de revisão</div>':''}</div>${meta.length?`<div class="rule-meta">${meta.map(([k,v])=>`<span><b>${k}:</b> ${escapeHtml(v)}</span>`).join('')}</div>`:''}${section('Como funciona',rule.description&&`<p>${linkifyRules(rule.description)}</p>`)}${section('Mecânica',rule.mechanics?.length?list(rule.mechanics.map(linkifyRules)): '')}${section('Exemplos',rule.examples?.length?list(rule.examples.map(linkifyRules)):'')}${section('Tags',rule.tags?.length?`<div class="rule-tags">${rule.tags.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>`:'')}${related.length?`<section class="rule-section"><h3>Relacionado</h3><div class="rule-related-list">${related.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div></section>`:''}${rule.note?`<section class="rule-section rule-review-note"><h3>Observação</h3><p>${escapeHtml(rule.note)}</p></section>`:''}</section>`;
+ window.scrollTo({top:0,behavior:'smooth'});
+}
+function openRuleModal(term){ const book=getRuleBook(); if(!book)return; const found=(book.search(term,{limit:1})||[])[0]?.rule; if(found) openRuleById(found.id); }
+function closeRuleModal(){}
+function backFromRule(){
+ ruleHistory.pop(); const previous=ruleHistory.pop();
+ if(previous){openRuleById(previous,true);return;}
+ switchTab('regras');
+}
+function openRuleForSkill(name){
+ const rule=findRuleForSkill(name);
+ if(!rule){alert('Não foi encontrada uma entrada estruturada para esta habilidade no Livro de Regras.');return;}
+ switchTab('regras'); setTimeout(()=>openRuleById(rule.id),0);
+}
+function renderRulesContext(){}
+function searchRulesFromContext(q){ switchTab('regras'); setTimeout(()=>{const i=document.getElementById('rules-search');if(i){i.value=q;searchRules(q);}},0); }
+window.openRuleById=openRuleById; window.openRuleForSkill=openRuleForSkill; window.searchRules=searchRules; window.filterRulesCategory=filterRulesCategory; window.scheduleRuleSearch=scheduleRuleSearch; window.backFromRule=backFromRule;
+
 function renderSkillCard(skill, tab, delay = 0) {
   const s = normalizeSkill(skill);
   const key = getSkillKey(tab, s.name);
@@ -289,7 +376,7 @@ function renderSkillCard(skill, tab, delay = 0) {
         >
       </div>
 
-      <p class="text-xs opacity-70 mb-3 leading-relaxed">${s.desc}</p>
+      <p class="text-xs opacity-70 mb-3 leading-relaxed">${linkifyRules(s.desc)}</p>
 
       <div class="flex flex-wrap gap-2 mb-3">
         <span class="badge ${getTypeBadgeClass(s.type)}">${s.type}</span>
@@ -308,6 +395,7 @@ function renderSkillCard(skill, tab, delay = 0) {
         <span class="opacity-60 mr-1">Ressonância:</span>
         ${renderResDots(s.res)}
       </div>
+      ${findRuleForSkill(s.name) ? `<button class="skill-rule-link" type="button" onclick="openRuleForSkill('${String(s.name).replace(/'/g,"\'")}')">📖 Ver regra completa</button>` : ''}
     </div>
   `;
 }
@@ -364,7 +452,11 @@ function switchTab(tab) {
 
   const mainContent = document.getElementById('main-content');
   
-  if (tab === 'personagem') {
+  if (tab === 'regras') {
+    mainContent.innerHTML = renderRulesPage();
+    renderRulesContext();
+    searchRules('');
+  } else if (tab === 'personagem') {
     mainContent.innerHTML = renderCharacterSheet();
     // Reinicializa os ícones da Lucide se você estiver usando na ficha
     if (window.lucide) window.lucide.createIcons();
@@ -1087,3 +1179,15 @@ document.addEventListener('change', (e) => {
 
 checkSession();
 
+
+
+/* RuleBook delegated term navigation */
+document.addEventListener('click', (event) => {
+  const button = event.target.closest && event.target.closest('[data-rule-id]');
+  if (!button) return;
+  event.preventDefault();
+  const ruleId = button.dataset.ruleId;
+  if (ruleId && typeof window.openRuleById === 'function') {
+    window.openRuleById(ruleId);
+  }
+});
