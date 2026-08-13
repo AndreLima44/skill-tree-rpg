@@ -407,6 +407,19 @@ body {
   font-family: 'Inter', serif;
 }
 
+/* Avatar do personagem: bem menor em telas médias/pequenas (tablets,
+   Steam Deck, celular) e só fica grande em desktop largo. */
+.char-avatar-box {
+  width: 72px;
+  height: 72px;
+}
+@media (min-width: 640px) {
+  .char-avatar-box { width: 96px; height: 96px; }
+}
+@media (min-width: 1280px) {
+  .char-avatar-box { width: 144px; height: 144px; }
+}
+
 .status-container {
   display: flex;
   align-items: center;
@@ -672,6 +685,38 @@ body {
     font-size: 14px !important; /* Estava 9px */
     line-height: 1.4;
 }
+/* Telas médias (tablets em pé, Steam Deck em modo desktop ~1280px de
+   largura CSS): a UI de celular só entra em 768px, mas nessa faixa
+   intermediária o cabeçalho e as abas ainda ocupam espaço demais numa
+   tela pequena de 7". Aperta um pouco sem ir tão longe quanto o modo
+   celular. */
+@media (max-width: 1180px) {
+  .app-header { padding: 0.6rem 1rem !important; }
+  .page-title { font-size: 22px !important; }
+  .user-label, .header-subtitle { font-size: 12px; margin-top: 3px; }
+  .tab-btn { padding: 7px 12px; font-size: 12px; }
+  #tabs-container { gap: 6px !important; padding-bottom: 8px; }
+}
+
+/* Cabeçalho e barra de abas fixos no topo: em telas pequenas o conteúdo
+   pode rolar bastante (árvores de habilidade, Escudo do Mestre), e é
+   melhor não perder a navegação e o "Sair" de vista. */
+@media (max-width: 1180px) {
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background-color: var(--bg-color);
+  }
+  #tabs-nav {
+    position: sticky;
+    top: 0;
+    z-index: 29;
+    background-color: var(--bg-color);
+    padding-top: 4px !important;
+  }
+}
+
 @media (max-width: 768px) {
   .absolute {
     position: static !important; /* No mobile, eles voltam a ficar embaixo para não encavalar */
@@ -743,4 +788,175 @@ body {
 .save-btn:hover {
   box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
   transform: translateY(-2px);
+}
+
+.save-btn[disabled] {
+  opacity: .5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Botão de salvar flutuante: fica sempre visível e acessível sem ocupar
+   uma faixa inteira da tela (importante em telas pequenas / Steam Deck). */
+.save-bar {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(13,13,18,0.9);
+  backdrop-filter: blur(6px);
+  padding: 6px 8px 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(139,92,246,0.3);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.save-status {
+  font-size: 11px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.save-status-loading { color: #94a3b8; }
+.save-status-saved   { color: #4ade80; }
+.save-status-dirty   { color: #facc15; }
+.save-status-saving  { color: #a5b4fc; }
+.save-status-error   { color: #f87171; }
+
+.save-bar .save-btn {
+  padding: 8px 14px;
+  font-size: 11px;
+}
+
+/* Espaço extra no fim do conteúdo pra nada ficar escondido atrás da
+   barra de salvar flutuante. */
+#main-content {
+  padding-bottom: 76px !important;
+}
+
+/* --- Escudo do Mestre --- */
+.shield-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.shield-card {
+  background: var(--surface-color);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.shield-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.shield-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(139,92,246,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+.shield-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.shield-head-info { flex: 1; min-width: 0; }
+
+.shield-char-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--primary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shield-player-name {
+  font-size: 11px;
+  opacity: .75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.shield-level {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  text-align: center;
+  color: #c7d2fe;
+  background: rgba(139,92,246,0.15);
+  border-radius: 8px;
+  padding: 4px 8px;
+  flex-shrink: 0;
+}
+
+.shield-bar-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 52px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.shield-bar-label {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+}
+.shield-bar-label.pv { color: #f87171; }
+.shield-bar-label.pd { color: #60a5fa; }
+
+.shield-bar-track {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+
+.shield-bar-fill { height: 100%; }
+.shield-bar-fill.pv { background: linear-gradient(90deg,#ef4444,#f87171); }
+.shield-bar-fill.pd { background: linear-gradient(90deg,#3b82f6,#60a5fa); }
+
+.shield-bar-value {
+  font-size: 11px;
+  text-align: right;
+  opacity: .8;
+  font-family: 'Orbitron', sans-serif;
+}
+
+.shield-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.shield-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 6px;
+  padding: 4px 2px;
+  font-size: 12px;
+  font-weight: 700;
 }
