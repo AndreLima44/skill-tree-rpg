@@ -5,6 +5,13 @@ const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 // Estado Global
 let currentMainTab = 'personagem';
 let currentTab = 'personagem';
+let currentSkillElement = 'frio';
+let activeBattle = null;
+let battleEnemies = [];
+let battleRealtimeChannel = null;
+let battleRefreshTimer = null;
+let combatPlayersCache = [];
+let combatRenderedBattleId = null;
 let unlocked = {};
 let currentUser = null;
 let currentRole = 'player';
@@ -84,6 +91,25 @@ function updateHeaderIdentity() {
     : `<span>${initial}</span>`;
 }
 
+function setLiveInputValue(id, value) {
+  const el = document.getElementById(id);
+  if (!el || document.activeElement === el) return;
+  const next = value ?? '';
+  if (String(el.value) !== String(next)) el.value = next;
+}
+
+function patchCharacterSheetFromRemote(remote) {
+  if (currentTab !== 'personagem') return;
+  const fields = {
+    name: 'char-name', origin: 'char-origin', class_name: 'char-class', archetype: 'char-archetype', player_name: 'char-player', level: 'char-level',
+    strength: 'stat-strength', dexterity: 'stat-dexterity', constitution: 'stat-constitution', intelligence: 'stat-intelligence', presence: 'stat-presence',
+    hp_current: 'hp-curr', hp_max: 'hp-max', energy_current: 'en-curr', energy_max: 'en-max', defense: 'stat-def', damage_reduction: 'stat-rd', dodge: 'stat-dodge', block: 'stat-block', movement_speed: 'stat-mov'
+  };
+  Object.entries(fields).forEach(([key, id]) => {
+    if (Object.prototype.hasOwnProperty.call(remote, key)) setLiveInputValue(id, remote[key]);
+  });
+}
+
 function subscribeToCharacterRealtime(userId) {
   if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
   realtimeChannel = supabaseClient.channel(`character:${userId}`)
@@ -92,17 +118,16 @@ function subscribeToCharacterRealtime(userId) {
       const remote = payload.new;
       if (loadedUpdatedAt && remote.updated_at && new Date(remote.updated_at) <= new Date(loadedUpdatedAt)) return;
       if (isDirty) {
-        setSaveStatus('error');
-        console.warn('Conflito: existe uma versão mais nova no servidor. O salvamento local foi bloqueado.');
+        console.warn('Chegou uma atualização remota enquanto existem alterações locais pendentes; mantendo os campos em edição.');
         return;
       }
       isApplyingRemoteUpdate = true;
-      characterData = { ...characterData, ...remote, skills: remote.skills || {}, attacks: remote.attacks || characterAttacks };
-      characterAttacks = [...characterData.attacks];
+      characterData = { ...characterData, ...remote, skills: remote.skills || characterData.skills || {}, attacks: remote.attacks || characterAttacks };
+      if (Array.isArray(remote.attacks)) characterAttacks = [...remote.attacks];
       loadedUpdatedAt = remote.updated_at || loadedUpdatedAt;
       updateHeaderIdentity();
-      if (currentTab === 'personagem') switchTab('personagem');
-      if (currentTab === 'escudo' && currentRole === 'admin') loadMasterShieldData();
+      patchCharacterSheetFromRemote(remote);
+      if (currentTab === 'combate') scheduleCombatSync();
       isApplyingRemoteUpdate = false;
     }).subscribe();
 }
@@ -221,16 +246,14 @@ window.removeAttack = function(index) {
 };
 
 const TAB_META = {
-personagem: '👤 Ficha de Personagem', // Nova aba
-  terra: '🌍 Terra',
-  energia: '⚡ Energia',
-  frio: '❄️ Frio',
-  vento: '💨 Vento',
-  agua: '💧 Água',
-  fogo: '🔥 Fogo',
-  universais: '✨ Universais',
-  forca: '💪 Força Inata',
-  regras: '📖 Regras & Combos'
+  personagem: '👤 Ficha',
+  combate: '⚔️ Combate',
+  habilidades: '🌳 Habilidades',
+  regras: '📖 Regras'
+};
+const SKILL_TAB_META = {
+  terra:'🌍 Terra', energia:'⚡ Energia', frio:'❄️ Frio', vento:'💨 Vento',
+  agua:'💧 Água', fogo:'🔥 Fogo', universais:'✨ Universais', forca:'💪 Força Inata'
 };
 
 function getSkillKey(tab, skillName) {
@@ -432,39 +455,89 @@ function renderTab(tab) {
 
 function renderTabs() {
   const container = document.getElementById('tabs-container');
-  let tabsHtml = Object.entries(TAB_META).map(([key, label]) => {
-    return `<button class="tab-btn ${key === currentTab ? 'active' : ''}" data-tab="${key}" onclick="switchTab('${key}')">${label}</button>`;
-  }).join('');
 
-  // Aba extra, visível só para o mestre (admin): resumo de todos os jogadores.
+  let tabsHtml = Object.entries(TAB_META)
+    .map(([key, label]) => {
+      /*
+       * TAB_META provavelmente possui valores assim:
+       *
+       * personagem: "👤 Ficha"
+       * combate: "⚔️ Combate"
+       * habilidades: "🌳 Habilidades"
+       * regras: "📖 Regras"
+       *
+       * Aqui separamos automaticamente o emoji do texto
+       * para permitir emoji em cima e texto embaixo no mobile.
+       */
+
+      const match = label.match(/^(\S+)\s+(.+)$/);
+
+      const icon = match ? match[1] : '';
+      const text = match ? match[2] : label;
+
+      return `
+        <button
+          class="tab-btn ${key === currentTab ? 'active' : ''}"
+          data-tab="${key}"
+          onclick="switchTab('${key}')"
+          title="${text}"
+        >
+          <span class="nav-icon">${icon}</span>
+          <span class="nav-label">${text}</span>
+        </button>
+      `;
+    })
+    .join('');
+
+
+  /* Botão exclusivo do Mestre */
   if (currentRole === 'admin') {
-    tabsHtml += `<button class="tab-btn ${currentTab === 'escudo' ? 'active' : ''}" data-tab="escudo" onclick="switchTab('escudo')">🛡️ Escudo do Mestre</button>`;
+    tabsHtml += `
+      <button
+        class="tab-btn ${currentTab === 'mestre' ? 'active' : ''}"
+        data-tab="mestre"
+        onclick="switchTab('mestre')"
+        title="Mestre"
+      >
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">Mestre</span>
+      </button>
+    `;
   }
+
 
   container.innerHTML = tabsHtml;
 }
 
-function switchTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.tab === tab);
-  });
+function renderAbilitiesHub() {
+  const buttons = Object.entries(SKILL_TAB_META).map(([key,label]) =>
+    `<button class="skill-element-btn ${currentSkillElement===key?'active':''}" onclick="selectSkillElement('${key}')">${label}</button>`
+  ).join('');
+  return `<section class="abilities-hub fade-in"><header class="section-hero"><div><span class="section-eyebrow">PROGRESSÃO</span><h2>🌳 Árvore de Habilidades</h2><p>Consulte e administre a progressão do personagem. Na ficha ficam apenas as habilidades já adquiridas.</p></div></header><div class="skill-element-nav">${buttons}</div><div id="skill-tree-content">${renderTab(currentSkillElement)}</div></section>`;
+}
+window.selectSkillElement = function(key){ currentSkillElement=key; const main=document.getElementById('main-content'); main.innerHTML=renderAbilitiesHub(); if(window.lucide) lucide.createIcons(); };
 
+function switchTab(tab) {
+  if (currentTab === 'personagem' && tab !== 'personagem' && isDirty) window.saveCharacterData({silent:true});
+  currentTab = tab;
+  renderTabs();
   const mainContent = document.getElementById('main-content');
-  
+  document.body.dataset.section = tab;
   if (tab === 'regras') {
-    mainContent.innerHTML = renderRulesPage();
-    renderRulesContext();
-    searchRules('');
+    mainContent.innerHTML = renderRulesPage(); renderRulesContext(); searchRules('');
   } else if (tab === 'personagem') {
-    mainContent.innerHTML = renderCharacterSheet();
-    // Reinicializa os ícones da Lucide se você estiver usando na ficha
-    if (window.lucide) window.lucide.createIcons();
-  } else if (tab === 'escudo') {
-    loadMasterShieldData();
-  } else {
-    mainContent.innerHTML = renderTab(tab);
+    mainContent.innerHTML = renderCharacterSheet(); if (window.lucide) window.lucide.createIcons();
+  } else if (tab === 'habilidades') {
+    mainContent.innerHTML = renderAbilitiesHub(); if (window.lucide) window.lucide.createIcons();
+  } else if (tab === 'combate') {
+    loadCombatView();
+  } else if (tab === 'mestre') {
+    mainContent.innerHTML = renderMasterHub();
   }
+}
+
+function renderMasterHub(){
+ return `<section class="master-hub fade-in"><header class="section-hero"><div><span class="section-eyebrow">FERRAMENTAS DO MESTRE</span><h2>⚙️ Mestre</h2><p>Atalhos administrativos sem poluir a navegação principal.</p></div></header><div class="master-actions"><button onclick="switchTab('combate')">⚔️ Gerenciar combate</button><button onclick="openCharacterPicker()">👥 Trocar personagem</button><button onclick="switchTab('regras');setTimeout(()=>showRuleCategory('review'),0)">📋 Consultar regras</button></div></section>`;
 }
 
 // --- Escudo do Mestre ---
@@ -547,6 +620,136 @@ function renderMasterShield(players) {
 
   return `<div class="shield-grid">${cards}</div>`;
 }
+
+function openCharacterPicker(){
+ if(currentRole!=='admin') return;
+ const existing=document.getElementById('character-picker-modal'); if(existing) existing.remove();
+ const rows=profilesCache.filter(p=>p.role!=='admin').map(p=>`<button class="character-picker-row" onclick="selectCharacterFromPicker('${p.id}')"><span class="picker-avatar">${escapeHtml((p.username||'?')[0].toUpperCase())}</span><span><strong>${escapeHtml(p.username||'Jogador')}</strong><small>Abrir ficha deste personagem</small></span></button>`).join('');
+ document.body.insertAdjacentHTML('beforeend',`<div id="character-picker-modal" class="picker-modal"><button class="picker-backdrop" onclick="closeCharacterPicker()"></button><div class="picker-panel"><div class="picker-head"><div><span class="section-eyebrow">PERSONAGENS</span><h3>Trocar ficha</h3></div><button onclick="closeCharacterPicker()">✕</button></div><div class="picker-search"><input placeholder="Pesquisar personagem..." oninput="filterCharacterPicker(this.value)"></div><div class="picker-list">${rows}</div></div></div>`);
+}
+function closeCharacterPicker(){document.getElementById('character-picker-modal')?.remove()}
+function filterCharacterPicker(q){q=String(q).toLowerCase();document.querySelectorAll('.character-picker-row').forEach(r=>r.hidden=!r.textContent.toLowerCase().includes(q))}
+async function selectCharacterFromPicker(id){closeCharacterPicker(); const select=document.getElementById('player-select'); if(select) select.value=id; selectedUserId=id; dataReady=false; setSaveStatus('loading'); await loadSkills(); await loadCharacterData();}
+window.openCharacterPicker=openCharacterPicker; window.closeCharacterPicker=closeCharacterPicker; window.filterCharacterPicker=filterCharacterPicker; window.selectCharacterFromPicker=selectCharacterFromPicker;
+
+function subscribeBattleRealtime(){
+  if (battleRealtimeChannel) supabaseClient.removeChannel(battleRealtimeChannel);
+  battleRealtimeChannel = supabaseClient.channel('battle-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'battles'},()=>{ if(currentTab==='combate') scheduleCombatSync(); })
+    .on('postgres_changes',{event:'*',schema:'public',table:'battle_enemies'},()=>{ if(currentTab==='combate') scheduleCombatSync(); })
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'characters'},()=>{ if(currentTab==='combate') scheduleCombatSync(); })
+    .subscribe();
+}
+
+function scheduleCombatSync(delay=120){
+  if (battleRefreshTimer) clearTimeout(battleRefreshTimer);
+  battleRefreshTimer = setTimeout(() => {
+    battleRefreshTimer = null;
+    if (currentTab === 'combate') syncCombatIncrementally();
+  }, delay);
+}
+
+async function fetchCombatState(){
+  const {data:battles,error}=await supabaseClient.from('battles').select('*').eq('active',true).order('created_at',{ascending:false}).limit(1);
+  if(error) return {error};
+  const battle=battles?.[0]||null;
+  let enemies=[];
+  if(battle){
+    const res=await supabaseClient.rpc('get_battle_enemies',{p_battle_id:battle.id});
+    if(res.error) return {error:res.error};
+    enemies=res.data||[];
+  }
+  let players=[];
+  const shield=await supabaseClient.rpc('get_master_shield_data');
+  if(!shield.error) players=shield.data||[];
+  return {battle,enemies,players,error:null};
+}
+
+async function loadCombatView(){
+  const main=document.getElementById('main-content');
+  main.innerHTML='<p class="rules-empty">Carregando combate...</p>';
+  const state=await fetchCombatState();
+  if(state.error){ main.innerHTML=renderCombatSetupNotice(state.error); return; }
+  activeBattle=state.battle;
+  battleEnemies=state.enemies;
+  combatPlayersCache=state.players;
+  combatRenderedBattleId=activeBattle?.id||null;
+  main.innerHTML=renderCombat(combatPlayersCache);
+  if(window.lucide)lucide.createIcons();
+  subscribeBattleRealtime();
+}
+
+function patchCombatHeader(){
+  const shell=document.querySelector('.combat-shell');
+  if(!shell || !activeBattle) return;
+  const title=shell.querySelector('[data-combat-title]');
+  const meta=shell.querySelector('[data-combat-meta]');
+  if(title) title.textContent='⚔️ '+(activeBattle.name||'Combate');
+  if(meta) meta.textContent=`Rodada ${activeBattle.round||1}${activeBattle.turn_label?' • Turno: '+activeBattle.turn_label:''}`;
+}
+
+function patchCardCollection(containerSelector, items, idKey, renderFn, attrName, emptyHtml=''){
+  const container=document.querySelector(containerSelector);
+  if(!container) return;
+  const wanted=new Set(items.map(item=>String(item[idKey])));
+  container.querySelectorAll(`[${attrName}]`).forEach(node=>{
+    if(!wanted.has(String(node.getAttribute(attrName)))) node.remove();
+  });
+  items.forEach(item=>{
+    const id=String(item[idKey]);
+    const existing=container.querySelector(`[${attrName}="${CSS.escape(id)}"]`);
+    const html=renderFn(item);
+    if(existing){
+      if(existing.outerHTML!==html) existing.outerHTML=html;
+    }else{
+      container.insertAdjacentHTML('beforeend',html);
+    }
+  });
+  const placeholder=container.querySelector('.combat-placeholder');
+  if(items.length && placeholder) placeholder.remove();
+  if(!items.length && emptyHtml && !container.querySelector('.combat-placeholder')) container.innerHTML=emptyHtml;
+}
+
+async function syncCombatIncrementally(){
+  const state=await fetchCombatState();
+  if(state.error || currentTab!=='combate') return;
+  const nextBattleId=state.battle?.id||null;
+  if(nextBattleId!==combatRenderedBattleId){
+    activeBattle=state.battle; battleEnemies=state.enemies; combatPlayersCache=state.players;
+    combatRenderedBattleId=nextBattleId;
+    const main=document.getElementById('main-content');
+    main.innerHTML=renderCombat(combatPlayersCache).replace(' fade-in','');
+    if(window.lucide)lucide.createIcons();
+    return;
+  }
+  activeBattle=state.battle;
+  battleEnemies=state.enemies;
+  combatPlayersCache=state.players;
+  if(!activeBattle) return;
+  patchCombatHeader();
+  const allyCount=document.querySelector('[data-ally-count]');
+  if(allyCount) allyCount.textContent=`${combatPlayersCache.length} personagens`;
+  patchCardCollection('.battle-allies', combatPlayersCache, 'user_id', renderBattlePlayerCard, 'data-player-id');
+  patchCardCollection('.battle-enemies', battleEnemies, 'id', renderEnemyCard, 'data-enemy-id', '<p class="combat-placeholder">Nenhum inimigo adicionado.</p>');
+}
+
+function renderCombatSetupNotice(error){return `<section class="combat-shell"><div class="combat-empty"><span>⚔️</span><h2>Combate ainda não configurado</h2><p>${escapeHtml(error?.message||'Execute a migração SQL atualizada para ativar batalhas.')}</p><small>O restante do site continua funcionando normalmente.</small></div></section>`}
+function renderCombat(players){
+ if(!activeBattle) return `<section class="combat-shell fade-in"><header class="combat-header"><div><span class="section-eyebrow">SESSÃO</span><h2>⚔️ Combate</h2><p>Nenhum combate ativo.</p></div>${currentRole==='admin'?`<button class="primary-action" onclick="startBattle()">+ Iniciar combate</button>`:''}</header><div class="combat-empty"><span>⚔️</span><h3>A mesa está fora de combate</h3><p>Quando o mestre iniciar uma batalha, aliados e inimigos aparecerão aqui em tempo real.</p></div></section>`;
+ const allies=players.map(renderBattlePlayerCard).join(''); const enemies=battleEnemies.map(renderEnemyCard).join('')||'<p class="combat-placeholder">Nenhum inimigo adicionado.</p>';
+ return `<section class="combat-shell fade-in"><header class="combat-header"><div><span class="section-eyebrow">BATALHA ATIVA</span><h2 data-combat-title>⚔️ ${escapeHtml(activeBattle.name||'Combate')}</h2><p data-combat-meta>Rodada ${activeBattle.round||1}${activeBattle.turn_label?' • Turno: '+escapeHtml(activeBattle.turn_label):''}</p></div>${currentRole==='admin'?`<div class="combat-admin-actions"><button onclick="advanceRound()">+ Rodada</button><button class="danger-action" onclick="endBattle()">Encerrar</button></div>`:''}</header><div class="combat-section-head"><h3>Aliados</h3><span data-ally-count>${players.length} personagens</span></div><div class="battle-allies">${allies}</div><div class="combat-section-head"><h3>Inimigos</h3>${currentRole==='admin'?`<button onclick="openEnemyEditor()">+ Adicionar inimigo</button>`:''}</div><div class="battle-enemies">${enemies}</div></section>`;
+}
+function renderBattlePlayerCard(pl){const hpMax=pl.hp_max||1,hp=Math.max(0,Math.min(100,Math.round((pl.hp_current||0)/hpMax*100))),pdMax=pl.energy_max||1,pd=Math.max(0,Math.min(100,Math.round((pl.energy_current||0)/pdMax*100)));return `<article class="battle-card ally-card" data-player-id="${escapeHtml(pl.user_id||'')}"><div class="battle-card-head"><div class="battle-avatar">${pl.avatar_url?`<img src="${pl.avatar_url}">`:escapeHtml((pl.name||'?')[0])}</div><div><strong>${escapeHtml(pl.name||'Sem nome')}</strong><small>${escapeHtml([pl.class_name,pl.archetype].filter(Boolean).join(' • '))}</small></div><b>NV ${pl.level||1}</b></div><div class="battle-resource"><span>PV</span><div><i style="width:${hp}%"></i></div><b>${pl.hp_current||0}/${pl.hp_max||0}</b></div><div class="battle-resource pd"><span>PD</span><div><i style="width:${pd}%"></i></div><b>${pl.energy_current||0}/${pl.energy_max||0}</b></div><div class="battle-stats"><span>DEF <b>${pl.defense??10}</b></span><span>ESQ <b>${pl.dodge??0}</b></span><span>BLOQ <b>${pl.block??0}</b></span><span>DESL <b>${pl.movement_speed??9}m</b></span></div>${currentRole==='admin'?`<button class="card-link" onclick="selectCharacterFromPicker('${pl.user_id}');setTimeout(()=>switchTab('personagem'),100)">Abrir ficha →</button>`:''}</article>`}
+function enemyVisible(e,key){return currentRole==='admin'||(e.visibility||{})[key]!==false}
+function renderEnemyCard(e){const max=e.hp_max||1,pct=Math.max(0,Math.min(100,Math.round((e.hp_current||0)/max*100))),v=e.visibility||{};return `<article class="battle-card enemy-card" data-enemy-id="${escapeHtml(e.id||'')}"><div class="battle-card-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${e.image_url}">`:'👹'}</div><div><strong>${enemyVisible(e,'name')?escapeHtml(e.name||'Inimigo'):'Inimigo desconhecido'}</strong><small>${escapeHtml(e.subtitle||'')}</small></div>${currentRole==='admin'?`<button class="icon-action" onclick="openEnemyEditor('${e.id}')">✎</button>`:''}</div>${enemyVisible(e,'hp')?`<div class="battle-resource enemy-hp"><span>PV</span><div><i style="width:${pct}%"></i></div><b>${enemyVisible(e,'hp_numbers')?`${e.hp_current||0}/${e.hp_max||0}`:'?'}</b></div>`:''}<div class="battle-stats">${enemyVisible(e,'defense')?`<span>DEF <b>${e.defense??10}</b></span>`:''}${enemyVisible(e,'dodge')?`<span>ESQ <b>${e.dodge??0}</b></span>`:''}${enemyVisible(e,'block')?`<span>BLOQ <b>${e.block??0}</b></span>`:''}${enemyVisible(e,'movement')?`<span>DESL <b>${e.movement_speed??9}m</b></span>`:''}</div>${enemyVisible(e,'conditions')&&e.conditions?.length?`<div class="condition-chips">${e.conditions.map(c=>`<button onclick="searchRulesFromContext('${escapeHtml(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}${currentRole==='admin'?`<div class="enemy-quick"><button onclick="changeEnemyHp('${e.id}',-1)">−1 PV</button><button onclick="changeEnemyHp('${e.id}',1)">+1 PV</button></div>`:''}</article>`}
+async function startBattle(){if(currentRole!=='admin')return;const name=prompt('Nome do combate:','Batalha');if(name===null)return;await supabaseClient.from('battles').update({active:false}).eq('active',true);const {error}=await supabaseClient.from('battles').insert({name:name||'Batalha',active:true,round:1,created_by:currentUser.id});if(error)alert(error.message);else scheduleCombatSync(50)}
+async function endBattle(){if(!confirm('Encerrar o combate atual?'))return;await supabaseClient.from('battles').update({active:false}).eq('id',activeBattle.id);scheduleCombatSync(50)}
+async function advanceRound(){await supabaseClient.from('battles').update({round:(activeBattle.round||1)+1}).eq('id',activeBattle.id);}
+function openEnemyEditor(id){const e=battleEnemies.find(x=>x.id===id)||{visibility:{name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true},conditions:[]};document.body.insertAdjacentHTML('beforeend',`<div id="enemy-editor" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('enemy-editor').remove()"></button><form class="picker-panel enemy-editor" onsubmit="saveEnemy(event,'${id||''}')"><div class="picker-head"><div><span class="section-eyebrow">INIMIGO</span><h3>${id?'Editar':'Adicionar'} inimigo</h3></div><button type="button" onclick="document.getElementById('enemy-editor').remove()">✕</button></div><label>Nome<input name="name" value="${escapeHtml(e.name||'')}"></label><div class="enemy-form-grid"><label>PV atual<input name="hp_current" type="number" value="${e.hp_current??10}"></label><label>PV máximo<input name="hp_max" type="number" value="${e.hp_max??10}"></label><label>Defesa<input name="defense" type="number" value="${e.defense??10}"></label><label>Esquiva<input name="dodge" type="number" value="${e.dodge??0}"></label><label>Bloqueio<input name="block" type="number" value="${e.block??0}"></label><label>Deslocamento<input name="movement_speed" type="number" value="${e.movement_speed??9}"></label></div><label>Condições (separadas por vírgula)<input name="conditions" value="${escapeHtml((e.conditions||[]).join(', '))}"></label><fieldset><legend>Visível para jogadores</legend>${[['name','Nome'],['hp','Barra de PV'],['hp_numbers','PV numérico'],['conditions','Condições'],['defense','Defesa'],['dodge','Esquiva'],['block','Bloqueio'],['movement','Deslocamento']].map(([k,l])=>`<label class="check-row"><input type="checkbox" name="vis_${k}" ${e.visibility?.[k]!==false?'checked':''}> ${l}</label>`).join('')}</fieldset><button class="primary-action" type="submit">Salvar inimigo</button>${id?`<button class="danger-action" type="button" onclick="deleteEnemy('${id}')">Remover inimigo</button>`:''}</form></div>`)}
+async function saveEnemy(ev,id){ev.preventDefault();const f=new FormData(ev.target),visibility={};['name','hp','hp_numbers','conditions','defense','dodge','block','movement'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on');const payload={battle_id:activeBattle.id,name:f.get('name')||'Inimigo',hp_current:+f.get('hp_current')||0,hp_max:+f.get('hp_max')||0,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),visibility};const q=id?supabaseClient.from('battle_enemies').update(payload).eq('id',id):supabaseClient.from('battle_enemies').insert(payload);const {error}=await q;if(error)alert(error.message);else{document.getElementById('enemy-editor')?.remove();scheduleCombatSync(50)}}
+async function deleteEnemy(id){if(!confirm('Remover este inimigo?'))return;await supabaseClient.from('battle_enemies').delete().eq('id',id);document.getElementById('enemy-editor')?.remove();scheduleCombatSync(50)}
+async function changeEnemyHp(id,d){const e=battleEnemies.find(x=>x.id===id);if(!e)return;await supabaseClient.from('battle_enemies').update({hp_current:Math.max(0,(e.hp_current||0)+d)}).eq('id',id)}
+window.startBattle=startBattle;window.endBattle=endBattle;window.advanceRound=advanceRound;window.openEnemyEditor=openEnemyEditor;window.saveEnemy=saveEnemy;window.deleteEnemy=deleteEnemy;window.changeEnemyHp=changeEnemyHp;
 
 async function login() {
   const email = document.getElementById('email').value.trim();
@@ -670,7 +873,7 @@ async function toggleSkill(key, checkbox) {
   }
 
   await saveSkills();
-  document.getElementById('main-content').innerHTML = renderTab(currentTab);
+  if(currentTab==='habilidades') document.getElementById('main-content').innerHTML = renderAbilitiesHub();
 }
 
 async function saveSkills() {
@@ -971,7 +1174,7 @@ function renderCharacterSheet() {
           <div class="section-title flex justify-between items-center mb-6">
             <div class="flex items-center gap-2">
               <i data-lucide="swords" class="w-4 h-4 text-purple-400"></i>
-              <span class="uppercase tracking-widest">Combate</span>
+              <span class="uppercase tracking-widest">Ataques</span>
             </div>
             <button onclick="window.addAttack()" class="text-[9px] bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 px-3 py-1 rounded border border-purple-500/30 transition-all font-bold">
               + ADICIONAR
@@ -1015,6 +1218,7 @@ function renderCharacterSheet() {
               <span class="text-[16px] font-bold text-purple-400 uppercase tracking-[0.2em] font-['Orbitron']">
                 Habilidades Desbloqueadas
               </span>
+              <button type="button" onclick="switchTab('habilidades')" class="view-tree-btn">Ver árvore →</button>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               ${skillsListHtml}

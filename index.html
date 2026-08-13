@@ -85,7 +85,11 @@
 
         <div class="topbar-left">
 
-          <div class="header-identity">
+          <div
+            class="header-identity"
+            onclick="openCharacterPicker()"
+            title="Trocar personagem"
+          >
 
             <div
               id="header-avatar"
@@ -101,7 +105,7 @@
                 id="page-title"
                 class="page-title"
               >
-                Árvore de Habilidades
+                Elemento do Frio
               </h1>
 
               <p
@@ -151,20 +155,15 @@
 
       </div>
 
-
-      <p class="header-subtitle">
-        Selecione um elemento para visualizar as habilidades
-      </p>
-
     </header>
 
 
-    <!-- NAVEGAÇÃO -->
-    <nav id="tabs-nav">
+    <!-- NAVEGAÇÃO PRINCIPAL -->
+    <nav id="tabs-nav" class="main-navigation">
 
       <div
         id="tabs-container"
-        class="flex gap-2 overflow-x-auto scroll-container"
+        class="main-navigation-inner scroll-container"
       ></div>
 
     </nav>
@@ -214,7 +213,7 @@
   <!-- DADOS DAS HABILIDADES -->
   <script src="skills-data.js"></script>
 
-  <!-- LIVRO DE REGRAS: BASE MODULAR -->
+  <!-- LIVRO DE REGRAS -->
   <script type="module" src="rules/index.js"></script>
 
   <!-- ÍCONES -->

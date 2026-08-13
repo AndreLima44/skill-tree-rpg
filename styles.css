@@ -370,7 +370,7 @@ body {
 
   overflow-x: auto;
 
-  gap: 5px;
+  gap: 40px;
 }
 
 .tab-btn {
@@ -1891,30 +1891,23 @@ body {
 @media (max-width: 640px) {
 
   .app-header {
-    padding:
-      7px
-      7px;
+    padding: 7px 7px;
   }
 
   .header-avatar {
     width: 34px;
     height: 34px;
-
     border-radius: 7px;
   }
 
   .page-title {
     max-width: 46vw;
-
-    font-size:
-      14px;
+    font-size: 14px;
   }
 
   .user-label {
     max-width: 46vw;
-
-    font-size:
-      9px;
+    font-size: 9px;
   }
 
   .topbar-right {
@@ -1922,165 +1915,194 @@ body {
   }
 
   .admin-label {
-    display:
-      none;
+    display: none;
   }
 
   .admin-select {
-    max-width:
-      110px;
-
-    padding:
-      4px
-      5px;
-
-    font-size:
-      9px;
+    max-width: 110px;
+    padding: 4px 5px;
+    font-size: 9px;
   }
 
   .logout-btn {
-    padding:
-      4px
-      6px;
-
-    font-size:
-      9px;
+    padding: 4px 6px;
+    font-size: 9px;
   }
 
+
+  /* =====================================================
+     NAVEGAÇÃO MOBILE
+     Emoji em cima + texto embaixo
+     ===================================================== */
+
   #tabs-nav {
-    padding:
-      3px
-      5px
-      6px;
+    padding: 4px 5px calc(5px + env(safe-area-inset-bottom));
+    gap: 10px;
+
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
   }
 
   .tab-btn {
-    padding:
-      6px
-      8px;
+    flex: 1 1 0;
 
-    font-size:
-      9px;
+    min-width: 0;
+    min-height: 56px;
+
+    padding: 5px 3px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 10px;
+
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+
+    border-radius: 9px;
+
+    cursor: pointer;
+    touch-action: manipulation;
   }
 
-  #main-content {
-    padding-left:
-      5px;
+  /*
+    Caso o botão tenha:
 
-    padding-right:
-      5px;
+    <span class="nav-icon">👤</span>
+    <span class="nav-label">Ficha</span>
+
+    essas regras deixam o emoji maior.
+  */
+
+  .tab-btn .nav-icon {
+    display: block;
+
+    font-size: 22px;
+    line-height: 1;
+
+    margin: 0;
+  }
+
+  .tab-btn .nav-label {
+    display: block;
+
+    font-size: 10px;
+    line-height: 1.1;
+
+    white-space: nowrap;
+  }
+
+
+  /* =====================================================
+     CONTEÚDO
+     ===================================================== */
+
+  #main-content {
+    padding-left: 5px;
+    padding-right: 5px;
   }
 
   .character-summary-card {
-    padding:
-      7px;
+    padding: 7px;
   }
 
   .character-fields-grid {
     grid-template-columns:
       repeat(
         2,
-        minmax(
-          0,
-          1fr
-        )
+        minmax(0, 1fr)
       );
 
-    gap:
-      6px
-      7px;
+    gap: 6px 7px;
   }
 
   .sheet-wrapper > .grid > div:first-child {
-    grid-template-columns:
-      1fr;
+    grid-template-columns: 1fr;
   }
+
+
+  /* =====================================================
+     PERÍCIAS
+     ===================================================== */
 
   .skill-header,
   .skill-row {
     grid-template-columns:
-      minmax(
-        85px,
-        1.4fr
-      )
+      minmax(85px, 1.4fr)
       31px
       41px
       35px
       41px;
 
-    gap:
-      3px;
+    gap: 3px;
   }
 
   .skill-name {
-    font-size:
-      10px;
+    font-size: 10px;
   }
 
   .skill-attr {
-    font-size:
-      8px;
+    font-size: 8px;
   }
 
   .skill-cell {
-    font-size:
-      10px;
+    font-size: 10px;
   }
 
+
+  /* =====================================================
+     ESCUDO / COMBATE
+     ===================================================== */
+
   .shield-grid {
-    grid-template-columns:
-      1fr;
+    grid-template-columns: 1fr;
   }
 
   .shield-stat-grid {
     grid-template-columns:
-      repeat(
-        5,
-        1fr
-      );
+      repeat(5, 1fr);
   }
 
   .shield-meta-row {
-    flex-direction:
-      column;
-
-    gap:
-      2px;
+    flex-direction: column;
+    gap: 2px;
   }
 
+
+  /* =====================================================
+     LIVRO DE REGRAS
+     ===================================================== */
+
   .rules-quick-grid {
-    grid-template-columns:
-      1fr;
+    grid-template-columns: 1fr;
   }
 
   .rules-search-wrap {
-    flex-direction:
-      column;
-
-    align-items:
-      stretch;
+    flex-direction: column;
+    align-items: stretch;
   }
 
+
+  /* =====================================================
+     AUTOSAVE
+     ===================================================== */
+
   .save-bar {
-    left:
-      5px;
+    left: 5px;
+    right: 5px;
+    bottom: 5px;
 
-    right:
-      5px;
+    justify-content: space-between;
 
-    bottom:
-      5px;
-
-    justify-content:
-      space-between;
-
-    border-radius:
-      9px;
+    border-radius: 9px;
   }
 
   .save-status {
-    max-width:
-      65vw;
+    max-width: 65vw;
   }
 
 }
@@ -2113,3 +2135,13 @@ body {
 
 /* ===== LIVRO DE REGRAS ESTRUTURADO ===== */
 .rulebook-shell,.rule-detail{width:min(1180px,100%);margin:0 auto;padding:16px}.rulebook-header{margin-bottom:14px}.rulebook-header h1,.rule-detail h1{margin:4px 0;font-family:'Cinzel',serif}.rulebook-header p{opacity:.72}.rule-search input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.2);color:inherit;font-size:1rem}.rule-category-row,.rulebook-popular,.rule-related-list,.rule-tags,.rule-meta{display:flex;gap:8px;flex-wrap:wrap}.rule-category-row{overflow-x:auto;flex-wrap:nowrap;padding:10px 0}.rule-category-chip,.rulebook-popular button,.rule-related-item,.skill-rule-link{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:999px;padding:7px 10px;white-space:nowrap}.rulebook-popular{margin:12px 0;align-items:center;font-size:.85rem}.rules-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}.rule-result-card{text-align:left;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.045);border-radius:14px;padding:14px;color:inherit;cursor:pointer}.rule-result-card strong{display:block;font-size:1rem;margin:4px 0}.rule-result-card p{opacity:.72;margin:0}.rule-kicker{font-size:.68rem;letter-spacing:.08em;opacity:.6}.rule-card-related{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.rule-card-related span,.rule-tags span{font-size:.72rem;padding:4px 7px;border-radius:99px;background:rgba(255,255,255,.07)}.rule-status-review{display:inline-block;margin-top:10px;font-size:.78rem;color:#f4c46b}.rule-breadcrumb{display:flex;gap:12px;align-items:center;margin-bottom:14px;font-size:.84rem;opacity:.8}.rule-breadcrumb button{background:none;border:0;color:inherit;font:inherit;cursor:pointer}.rule-detail-head{display:flex;justify-content:space-between;gap:12px}.rule-detail-head>div{max-width:760px}.rule-meta{margin:16px 0}.rule-meta span{padding:7px 10px;background:rgba(255,255,255,.06);border-radius:8px;font-size:.85rem}.rule-section{margin-top:20px;padding:16px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)}.rule-section h3{margin:0 0 10px}.rule-section p,.rule-section li{line-height:1.6}.rule-review-note{border-color:rgba(244,196,107,.35)}.rule-term{display:inline;border:0;background:none;color:var(--secondary-color);text-decoration:underline;cursor:pointer;padding:0;font:inherit}.skill-rule-link{margin-top:12px;width:100%;border-radius:8px;font-size:.78rem}.rules-empty{opacity:.65;padding:24px 0;text-align:center}@media(max-width:700px){.rulebook-shell,.rule-detail{padding:10px}.rules-results{grid-template-columns:1fr}.rule-detail-head{display:block}.rule-breadcrumb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rule-category-row{margin-left:-10px;margin-right:-10px;padding-left:10px}.rule-section{padding:13px}.rule-meta{gap:6px}}
+
+/* ===== ARQUITETURA 2026: FICHA / COMBATE / HABILIDADES / REGRAS ===== */
+#app{position:relative}.app-header{z-index:20}.header-identity{cursor:default}.admin-panel{display:none!important}
+.section-hero,.combat-header{display:flex;justify-content:space-between;gap:16px;align-items:end;margin-bottom:16px}.section-hero h2,.combat-header h2{margin:4px 0;font:700 clamp(20px,3vw,30px)/1.1 'Cinzel',serif}.section-hero p,.combat-header p{margin:0;opacity:.65;font-size:12px}.section-eyebrow{font:700 9px/1 'Orbitron',sans-serif;letter-spacing:.16em;color:#a78bfa}
+.abilities-hub,.combat-shell,.master-hub{width:min(1400px,100%);margin:0 auto;padding:14px}.skill-element-nav{display:flex;gap:7px;overflow-x:auto;padding:4px 0 14px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,.06)}.skill-element-btn{flex:0 0 auto;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);color:inherit;border-radius:9px;padding:8px 11px;font-size:11px}.skill-element-btn.active{background:#7c3aed;border-color:#8b5cf6;color:#fff}.view-tree-btn{margin-left:auto;border:1px solid rgba(167,139,250,.3);background:rgba(139,92,246,.1);color:#c4b5fd;border-radius:8px;padding:6px 9px;font-size:10px;white-space:nowrap}
+.primary-action,.combat-admin-actions button,.combat-section-head button,.master-actions button{border:1px solid rgba(167,139,250,.3);background:#7c3aed;color:#fff;border-radius:9px;padding:8px 12px;font-weight:700;font-size:11px}.danger-action{background:rgba(239,68,68,.12)!important;border-color:rgba(239,68,68,.3)!important;color:#fca5a5!important}.combat-admin-actions{display:flex;gap:7px}.combat-empty{text-align:center;padding:70px 20px;border:1px dashed rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.02)}.combat-empty>span{font-size:42px}.combat-empty h2,.combat-empty h3{margin:10px 0 5px}.combat-empty p{opacity:.62}.combat-section-head{display:flex;align-items:center;justify-content:space-between;margin:18px 0 9px}.combat-section-head h3{margin:0;font:700 13px 'Orbitron',sans-serif;text-transform:uppercase;letter-spacing:.08em}.combat-section-head span{font-size:10px;opacity:.5}.battle-allies,.battle-enemies{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}.battle-card{padding:12px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(255,255,255,.035)}.enemy-card{border-color:rgba(239,68,68,.18)}.battle-card-head{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:9px;margin-bottom:10px}.battle-card-head strong,.battle-card-head small{display:block}.battle-card-head small{font-size:10px;opacity:.55;margin-top:2px}.battle-card-head>b{font:700 9px 'Orbitron',sans-serif;color:#c4b5fd}.battle-avatar{width:40px;height:40px;border-radius:9px;display:grid;place-items:center;overflow:hidden;background:rgba(139,92,246,.15);font-weight:800}.battle-avatar.enemy{background:rgba(239,68,68,.1)}.battle-avatar img{width:100%;height:100%;object-fit:cover}.battle-resource{display:grid;grid-template-columns:25px 1fr 58px;align-items:center;gap:7px;margin:5px 0;font-size:9px}.battle-resource>div{height:7px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.07)}.battle-resource i{display:block;height:100%;background:#ef4444}.battle-resource.pd i{background:#3b82f6}.battle-resource.enemy-hp i{background:#f97316}.battle-resource>b{text-align:right}.battle-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:9px}.battle-stats span{padding:5px 3px;border-radius:6px;background:rgba(0,0,0,.18);text-align:center;font-size:8px;opacity:.7}.battle-stats b{display:block;font-size:11px;color:#fff}.condition-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.condition-chips button{border:1px solid rgba(96,165,250,.25);background:rgba(59,130,246,.09);color:#bfdbfe;border-radius:99px;padding:4px 7px;font-size:9px}.enemy-quick{display:flex;gap:5px;margin-top:9px}.enemy-quick button,.card-link,.icon-action{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:inherit;border-radius:7px;padding:5px 8px;font-size:9px}.card-link{width:100%;margin-top:9px}.combat-placeholder{opacity:.5}.master-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.master-actions button{min-height:80px;background:rgba(139,92,246,.09);color:#ddd}
+.picker-modal{position:fixed;z-index:10000;inset:0}.picker-backdrop{position:absolute;inset:0;border:0;background:rgba(0,0,0,.68)}.picker-panel{position:absolute;top:10vh;left:50%;transform:translateX(-50%);width:min(460px,calc(100% - 20px));max-height:80vh;overflow:auto;padding:15px;border:1px solid rgba(167,139,250,.28);border-radius:15px;background:#15151d;box-shadow:0 25px 80px #000}.picker-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.picker-head h3{margin:3px 0}.picker-head>button{border:0;background:none;color:#fff;font-size:18px}.picker-search input,.enemy-editor>label input,.enemy-form-grid input{width:100%;padding:9px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:#0d0d12;color:#fff}.picker-list{display:grid;gap:5px;margin-top:10px}.character-picker-row{display:grid;grid-template-columns:38px 1fr;gap:9px;align-items:center;text-align:left;padding:9px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(255,255,255,.025);color:inherit}.character-picker-row small{display:block;opacity:.5;margin-top:2px}.picker-avatar{width:38px;height:38px;display:grid;place-items:center;border-radius:8px;background:rgba(139,92,246,.14)}.enemy-editor{display:grid;gap:10px}.enemy-editor label{font-size:10px;opacity:.85}.enemy-editor input{display:block;margin-top:4px}.enemy-form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.enemy-editor fieldset{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:9px}.enemy-editor legend{font-size:10px;padding:0 5px}.check-row{display:flex!important;align-items:center;gap:5px}.check-row input{width:auto!important;margin:0!important}
+body:not([data-section="personagem"]) #save-bar{display:none!important}
+@media(min-width:900px){#app{padding-left:72px}.app-header{margin-left:-72px;padding-left:84px!important}#tabs-nav{position:fixed!important;left:0;top:0;bottom:0;width:72px;padding:74px 8px 10px!important;background:#101017;border-right:1px solid rgba(255,255,255,.06);z-index:15}#tabs-container{height:100%;display:flex!important;flex-direction:column;overflow:visible!important}.tab-btn{width:54px;min-height:50px;padding:7px 4px!important;white-space:normal!important;font-size:0!important;line-height:1.15}.tab-btn::first-letter{font-size:20px}.tab-btn[data-tab="personagem"]::after{content:'Ficha'}.tab-btn[data-tab="combate"]::after{content:'Combate'}.tab-btn[data-tab="habilidades"]::after{content:'Skills'}.tab-btn[data-tab="regras"]::after{content:'Regras'}.tab-btn[data-tab="mestre"]::after{content:'Mestre'}.tab-btn::after{display:block;font-size:8px;margin-top:4px}.header-identity{cursor:pointer}}
+@media(max-width:899px){#main-content{padding-bottom:76px!important}#tabs-nav{position:fixed!important;left:0;right:0;bottom:0;top:auto!important;z-index:80;padding:5px max(6px,env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))!important;background:rgba(13,13,18,.96);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.08)}#tabs-container{justify-content:space-around!important;overflow:visible!important}.tab-btn{flex:1;max-width:110px;padding:7px 3px!important;font-size:9px!important;white-space:normal!important}.save-bar{bottom:62px!important}.battle-allies,.battle-enemies{grid-template-columns:1fr}.master-actions{grid-template-columns:1fr}.section-hero,.combat-header{align-items:flex-start;flex-direction:column}.combat-admin-actions{width:100%}.combat-admin-actions button{flex:1}}

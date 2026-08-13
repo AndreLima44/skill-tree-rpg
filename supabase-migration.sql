@@ -111,3 +111,90 @@ LANGUAGE sql SECURITY DEFINER SET search_path = public AS $$
   ORDER BY c.name NULLS LAST;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_master_shield_data() TO authenticated;
+
+-- ============================================================
+-- COMBATE COMPARTILHADO
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.battles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL DEFAULT 'Batalha',
+  active boolean NOT NULL DEFAULT true,
+  round integer NOT NULL DEFAULT 1,
+  turn_label text,
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.battle_enemies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL REFERENCES public.battles(id) ON DELETE CASCADE,
+  name text NOT NULL DEFAULT 'Inimigo', subtitle text, image_url text,
+  hp_current integer NOT NULL DEFAULT 10, hp_max integer NOT NULL DEFAULT 10,
+  defense integer DEFAULT 10, dodge integer DEFAULT 0, block integer DEFAULT 0,
+  movement_speed numeric DEFAULT 9,
+  conditions jsonb NOT NULL DEFAULT '[]'::jsonb,
+  visibility jsonb NOT NULL DEFAULT '{"name":true,"hp":true,"hp_numbers":false,"conditions":true,"defense":false,"dodge":false,"block":false,"movement":true}'::jsonb,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.battles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.battle_enemies ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated read battles" ON public.battles;
+CREATE POLICY "authenticated read battles" ON public.battles FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "admin manage battles" ON public.battles;
+CREATE POLICY "admin manage battles" ON public.battles FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin')) WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+DROP POLICY IF EXISTS "authenticated read enemies" ON public.battle_enemies;
+CREATE POLICY "authenticated read enemies" ON public.battle_enemies FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "admin manage enemies" ON public.battle_enemies;
+CREATE POLICY "admin manage enemies" ON public.battle_enemies FOR ALL TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin')) WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+DO $$ BEGIN
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.battles; EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.battle_enemies; EXCEPTION WHEN duplicate_object THEN NULL; END;
+END $$;
+
+-- Leitura segura dos inimigos: jogadores recebem somente campos autorizados
+-- pela configuração de visibilidade. O mestre recebe os valores completos.
+DROP POLICY IF EXISTS "authenticated read enemies" ON public.battle_enemies;
+DROP FUNCTION IF EXISTS public.get_battle_enemies(uuid);
+CREATE OR REPLACE FUNCTION public.get_battle_enemies(p_battle_id uuid)
+RETURNS TABLE (
+  id uuid, battle_id uuid, name text, subtitle text, image_url text,
+  hp_current integer, hp_max integer, defense integer, dodge integer, block integer,
+  movement_speed numeric, conditions jsonb, visibility jsonb, sort_order integer
+)
+LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$
+  WITH me AS (
+    SELECT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin') AS is_admin
+  )
+  SELECT e.id,e.battle_id,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.name ELSE 'Inimigo desconhecido' END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.subtitle ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.image_url ELSE NULL END,
+    CASE
+      WHEN me.is_admin OR COALESCE((e.visibility->>'hp_numbers')::boolean,false) THEN e.hp_current
+      WHEN COALESCE((e.visibility->>'hp')::boolean,true) THEN ROUND(100.0 * e.hp_current / GREATEST(e.hp_max,1))::integer
+      ELSE NULL END,
+    CASE
+      WHEN me.is_admin OR COALESCE((e.visibility->>'hp_numbers')::boolean,false) THEN e.hp_max
+      WHEN COALESCE((e.visibility->>'hp')::boolean,true) THEN 100
+      ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'defense')::boolean,false) THEN e.defense ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'dodge')::boolean,false) THEN e.dodge ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'block')::boolean,false) THEN e.block ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'movement')::boolean,true) THEN e.movement_speed ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'conditions')::boolean,true) THEN e.conditions ELSE '[]'::jsonb END,
+    CASE WHEN me.is_admin THEN e.visibility ELSE jsonb_build_object(
+      'name',COALESCE((e.visibility->>'name')::boolean,true),
+      'hp',COALESCE((e.visibility->>'hp')::boolean,true),
+      'hp_numbers',COALESCE((e.visibility->>'hp_numbers')::boolean,false),
+      'conditions',COALESCE((e.visibility->>'conditions')::boolean,true),
+      'defense',COALESCE((e.visibility->>'defense')::boolean,false),
+      'dodge',COALESCE((e.visibility->>'dodge')::boolean,false),
+      'block',COALESCE((e.visibility->>'block')::boolean,false),
+      'movement',COALESCE((e.visibility->>'movement')::boolean,true)
+    ) END,
+    e.sort_order
+  FROM public.battle_enemies e CROSS JOIN me
+  WHERE e.battle_id=p_battle_id ORDER BY e.sort_order,e.created_at;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_battle_enemies(uuid) TO authenticated;
