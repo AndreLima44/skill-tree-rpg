@@ -11,6 +11,86 @@ let currentRole = 'player';
 let selectedUserId = null;
 let profilesCache = [];
 
+// --- Controle de carregamento / autosave ---
+// dataReady só fica true depois que a ficha do jogador selecionado terminou
+// de carregar do Supabase. Isso evita o bug onde salvar/autosalvar antes do
+// carregamento terminar gravava uma ficha vazia por cima da ficha salva.
+let dataReady = false;
+let isSaving = false;
+let isDirty = false;
+let autosaveTimer = null;
+const AUTOSAVE_DELAY_MS = 2000;
+
+function setSaveStatus(status) {
+  // status: 'loading' | 'saved' | 'dirty' | 'saving' | 'error'
+  const el = document.getElementById('save-status');
+  const btn = document.getElementById('save-btn');
+  if (!el || !btn) return;
+
+  const labels = {
+    loading: '⏳ Carregando ficha...',
+    saved: '✓ Tudo salvo',
+    dirty: '● Alterações não salvas',
+    saving: '⏳ Salvando...',
+    error: '⚠ Erro ao salvar'
+  };
+  el.textContent = labels[status] || '';
+  el.className = 'save-status save-status-' + status;
+
+  if (status === 'loading') {
+    btn.disabled = true;
+  } else {
+    btn.disabled = false;
+  }
+}
+
+function markDirtyAndScheduleAutosave() {
+  if (!dataReady || currentTab !== 'personagem') return;
+  isDirty = true;
+  setSaveStatus('dirty');
+
+  if (autosaveTimer) clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    window.saveCharacterData({ silent: true });
+  }, AUTOSAVE_DELAY_MS);
+}
+
+// Backup local (rede de segurança extra). Isso NÃO substitui o Supabase,
+// é só uma cópia de recuperação caso o salvamento na nuvem falhe.
+function backupCharacterLocally(userId, payload) {
+  try {
+    localStorage.setItem('char-backup-' + userId, JSON.stringify({
+      savedAt: new Date().toISOString(),
+      payload
+    }));
+  } catch (e) {
+    console.warn('Não foi possível salvar backup local:', e);
+  }
+}
+
+// Avisa o jogador antes de fechar/recarregar a aba se houver alterações
+// não salvas (bem comum de acontecer no Steam Deck ao fechar o navegador).
+window.addEventListener('beforeunload', (e) => {
+  if (isDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// Corrige a causa mais provável do bug "entrei no perfil e vi uma versão
+// antiga, salvei e apaguei os dados novos": quando o navegador restaura a
+// página pelo cache (botão voltar, trocar de app e voltar, etc.), o
+// JavaScript NÃO roda de novo — a página continua com os dados de
+// personagem que estavam em memória na última vez, que podem estar
+// desatualizados em relação ao que foi salvo depois (em outro dispositivo,
+// outra aba, ou pelo mestre). Forçar um reload garante que a ficha
+// carregada seja sempre a mais recente do banco.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    location.reload();
+  }
+});
+
 let characterData = {
   name: 'Novo Personagem',
   origin: '',
@@ -214,9 +294,16 @@ function renderTab(tab) {
 
 function renderTabs() {
   const container = document.getElementById('tabs-container');
-  container.innerHTML = Object.entries(TAB_META).map(([key, label]) => {
+  let tabsHtml = Object.entries(TAB_META).map(([key, label]) => {
     return `<button class="tab-btn ${key === currentTab ? 'active' : ''}" data-tab="${key}" onclick="switchTab('${key}')">${label}</button>`;
   }).join('');
+
+  // Aba extra, visível só para o mestre (admin): resumo de todos os jogadores.
+  if (currentRole === 'admin') {
+    tabsHtml += `<button class="tab-btn ${currentTab === 'escudo' ? 'active' : ''}" data-tab="escudo" onclick="switchTab('escudo')">🛡️ Escudo do Mestre</button>`;
+  }
+
+  container.innerHTML = tabsHtml;
 }
 
 function switchTab(tab) {
@@ -231,9 +318,92 @@ function switchTab(tab) {
     mainContent.innerHTML = renderCharacterSheet();
     // Reinicializa os ícones da Lucide se você estiver usando na ficha
     if (window.lucide) window.lucide.createIcons();
+  } else if (tab === 'escudo') {
+    loadMasterShieldData();
   } else {
     mainContent.innerHTML = renderTab(tab);
   }
+}
+
+// --- Escudo do Mestre ---
+// Mostra, numa única tela, um resumo de todos os jogadores para o mestre
+// acompanhar durante a sessão (PV, PD, Nível, PR, Defesa, Esquiva, Bloqueio,
+// Deslocamento). Depende da função get_master_shield_data no Supabase
+// (mesmo padrão de get_players_for_admin, só que trazendo também os dados
+// da tabela characters). Veja o SQL sugerido na documentação do projeto.
+async function loadMasterShieldData() {
+  const mainContent = document.getElementById('main-content');
+  mainContent.innerHTML = '<p class="opacity-60 text-center p-8">Carregando fichas dos jogadores...</p>';
+
+  const { data, error } = await supabaseClient.rpc('get_master_shield_data');
+
+  if (error) {
+    console.error('Erro ao carregar Escudo do Mestre:', error);
+    mainContent.innerHTML = `
+      <div class="opacity-80 text-center p-8">
+        <p>Não foi possível carregar o Escudo do Mestre.</p>
+        <p class="text-xs opacity-60 mt-2">${error.message}</p>
+        <p class="text-xs opacity-50 mt-2">Verifique se a função get_master_shield_data existe no Supabase.</p>
+      </div>`;
+    return;
+  }
+
+  mainContent.innerHTML = renderMasterShield(data || []);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function renderMasterShield(players) {
+  if (!players || players.length === 0) {
+    return '<p class="opacity-60 text-center p-8">Nenhum jogador encontrado.</p>';
+  }
+
+  const cards = players.map(pl => {
+    const hpMax = pl.hp_max || 0;
+    const enMax = pl.energy_max || 0;
+    const hpPct = hpMax ? Math.max(0, Math.min(100, Math.round((pl.hp_current / hpMax) * 100))) : 0;
+    const enPct = enMax ? Math.max(0, Math.min(100, Math.round((pl.energy_current / enMax) * 100))) : 0;
+    const displayName = pl.name || 'Sem nome';
+    const initial = (displayName || pl.username || '?').charAt(0).toUpperCase();
+
+    return `
+      <div class="shield-card">
+        <div class="shield-card-head">
+          <div class="shield-avatar">
+            ${pl.avatar_url
+              ? `<img src="${pl.avatar_url}" alt="${displayName}">`
+              : `<span>${initial}</span>`}
+          </div>
+          <div class="shield-head-info">
+            <div class="shield-char-name">${displayName}</div>
+            <div class="shield-player-name">${pl.username || ''}${pl.class_name ? ' • ' + pl.class_name : ''}</div>
+            <div class="shield-player-name opacity-60">${[pl.origin, pl.archetype].filter(Boolean).join(' • ')}</div>
+          </div>
+          <div class="shield-level">NV<br>${pl.level ?? 1}</div>
+        </div>
+
+        <div class="shield-bar-row">
+          <span class="shield-bar-label pv">PV</span>
+          <div class="shield-bar-track"><div class="shield-bar-fill pv" style="width:${hpPct}%"></div></div>
+          <span class="shield-bar-value">${pl.hp_current ?? 0}/${hpMax}</span>
+        </div>
+        <div class="shield-bar-row">
+          <span class="shield-bar-label pd">PD</span>
+          <div class="shield-bar-track"><div class="shield-bar-fill pd" style="width:${enPct}%"></div></div>
+          <span class="shield-bar-value">${pl.energy_current ?? 0}/${enMax}</span>
+        </div>
+
+        <div class="shield-stat-grid">
+          <div class="shield-stat"><span class="mini-label">PR</span><span>${pl.damage_reduction ?? 0}</span></div>
+          <div class="shield-stat"><span class="mini-label">DEFESA</span><span>${pl.defense ?? 10}</span></div>
+          <div class="shield-stat"><span class="mini-label">ESQUIVA</span><span>${pl.dodge ?? 10}</span></div>
+          <div class="shield-stat"><span class="mini-label">BLOQUEIO</span><span>${pl.block ?? 0}</span></div>
+          <div class="shield-stat"><span class="mini-label">DESLOC.</span><span>${pl.movement_speed ?? 9}m</span></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `<div class="shield-grid">${cards}</div>`;
 }
 
 async function login() {
@@ -281,6 +451,8 @@ async function initUser() {
       : `Logado como ${profile.username}`;
 
   renderTabs();
+  dataReady = false;
+  setSaveStatus('loading');
 
   if (currentRole === 'admin') {
     document.getElementById('admin-panel').classList.remove('hidden');
@@ -319,6 +491,8 @@ async function loadPlayers() {
 }
 
 async function loadSelectedPlayer() {
+  dataReady = false;
+  setSaveStatus('loading');
   selectedUserId = document.getElementById('player-select').value;
   await loadSkills();
   await loadCharacterData();
@@ -424,11 +598,11 @@ async function uploadCharacterAvatar(userId) {
 function renderCharacterSheet() {
   const skillsList = [
     ["Acrobacia","AGI"],["Adestramento","PRE"],["Artes","INT"],["Atletismo","FOR"],
-    ["Atualidades","INT"],["Ciências","INT"],["Estratégia","INT"],["Diplomacia","PRE"],
-    ["Enganação","PRE"],["Fortitude","VIG"],["Furtividade","AGI"],["Iniciativa","AGI"],
+    ["Atualidades","INT"],["Ciências","INT"],["Diplomacia","PRE"],["Enganação","PRE"],
+    ["Estratégia","INT"],["Fortitude","VIG"],["Furtividade","AGI"],["Iniciativa","AGI"],
     ["Intimidação","PRE"],["Intuição","PRE"],["Investigação","INT"],["Luta","FOR"],
-    ["Medicina","INT"],["Ressonância","INT"],["Percepção","PRE"],["Pilotagem","AGI"],
-    ["Pontaria","AGI"],["Profissão","INT"],["Reflexos","AGI"],["Religião","PRE"],
+    ["Medicina","INT"],["Percepção","PRE"],["Pilotagem","AGI"],["Pontaria","AGI"],
+    ["Profissão","INT"],["Reflexos","AGI"],["Religião","PRE"],["Ressonância","INT"],
     ["Sobrevivência","INT"],["Tática","INT"],["Tecnologia","INT"],["Vontade","PRE"]
   ];
 
@@ -528,10 +702,10 @@ function renderCharacterSheet() {
   return `
     <div class="sheet-wrapper fade-in p-4">
       <div class="glow-box p-4 mb-5">
-        <div class="flex flex-col lg:flex-row gap-4 items-start">
-          
-          <div class="w-full lg:w-[180px] flex flex-col items-center">
-            <div class="w-36 h-36 rounded-xl overflow-hidden border border-white/10 bg-black/20 flex items-center justify-center mb-3">
+        <div class="flex flex-col xl:flex-row gap-4 items-start char-info-block">
+
+          <div class="w-full xl:w-[150px] flex flex-row xl:flex-col items-center gap-3 xl:gap-0">
+            <div class="char-avatar-box rounded-xl overflow-hidden border border-white/10 bg-black/20 flex items-center justify-center mb-0 xl:mb-3 flex-shrink-0">
               ${
                 characterData.avatar_url
                   ? `<img src="${characterData.avatar_url}" alt="Avatar do personagem" class="w-full h-full object-cover">`
@@ -539,8 +713,10 @@ function renderCharacterSheet() {
               }
             </div>
 
-            <label class="sheet-info-label text-center w-full">Foto do Personagem</label>
-            <input id="char-avatar" class="field-input text-sm" type="file" accept="image/*">
+            <div class="flex-1 xl:w-full min-w-0">
+              <label class="sheet-info-label text-center w-full hidden xl:block">Foto do Personagem</label>
+              <input id="char-avatar" class="field-input text-sm" type="file" accept="image/*">
+            </div>
           </div>
 
           <div class="flex-1 w-full">
@@ -570,7 +746,7 @@ function renderCharacterSheet() {
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-[200px_0.3fr_1.3fr] gap-4 items-start">
+      <div class="grid grid-cols-1 xl:grid-cols-[200px_0.3fr_1.3fr] gap-4 items-start">
 
         <div class="flex flex-col gap-4">
           <div class="glow-box p-4">
@@ -728,13 +904,31 @@ window.updateStat = function(id, delta) {
   }
 };
 
-window.saveCharacterData = async function() {
+window.saveCharacterData = async function(options = {}) {
+    const silent = options.silent === true;
     const id = selectedUserId || (currentUser ? currentUser.id : null);
 
     if (!id) {
-        alert("Erro: Usuário não identificado.");
+        if (!silent) alert("Erro: Usuário não identificado.");
         return;
     }
+
+    // Proteção contra o bug de sobrescrita: nunca salvar antes da ficha
+    // atual terminar de carregar do banco, e nunca disparar dois
+    // salvamentos ao mesmo tempo.
+    if (!dataReady) {
+        if (!silent) alert("Aguarde a ficha terminar de carregar antes de salvar.");
+        return;
+    }
+    if (isSaving) {
+        // Já existe um salvamento em andamento; a próxima alteração vai
+        // reagendar o autosave normalmente.
+        return;
+    }
+
+    isSaving = true;
+    if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
+    setSaveStatus('saving');
 
     try {
         const skillsObj = {};
@@ -809,11 +1003,21 @@ document.querySelectorAll('.skill-row').forEach(row => {
             ...characterPayload
         };
 
-        alert("Ficha salva com sucesso!");
+        backupCharacterLocally(id, characterPayload);
+        isDirty = false;
+        setSaveStatus('saved');
+
+        if (!silent) alert("Ficha salva com sucesso!");
 
     } catch (err) {
         console.error("Erro ao salvar ficha:", err);
-        alert("Erro ao salvar ficha: " + err.message);
+        setSaveStatus('error');
+        // Mesmo com erro no Supabase, guardamos localmente para não perder
+        // o que o jogador digitou.
+        try { backupCharacterLocally(id, { attempted: true, error: err.message }); } catch(e) {}
+        if (!silent) alert("Erro ao salvar ficha: " + err.message);
+    } finally {
+        isSaving = false;
     }
 };
 
@@ -878,7 +1082,26 @@ async function loadCharacterData() {
     }
 
     switchTab(currentTab);
+
+    // Só a partir daqui é seguro salvar: a ficha atual reflete o que está
+    // no banco (ou é comprovadamente uma ficha nova).
+    dataReady = true;
+    isDirty = false;
+    setSaveStatus('saved');
 }
+
+// Autosave: qualquer edição na ficha de personagem (campos de texto,
+// atributos, perícias, ataques) agenda um salvamento automático silencioso
+// depois de alguns segundos sem digitar. O toggle de habilidades já salva
+// na hora (toggleSkill/saveSkills), então não precisa passar por aqui.
+document.addEventListener('input', (e) => {
+  if (!e.target.closest('#main-content')) return;
+  markDirtyAndScheduleAutosave();
+});
+document.addEventListener('change', (e) => {
+  if (!e.target.closest('#main-content')) return;
+  markDirtyAndScheduleAutosave();
+});
 
 checkSession();
 
