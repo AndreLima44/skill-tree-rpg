@@ -1,0 +1,384 @@
+   SAVE / AUTOSAVE
+========================================================= */
+
+.save-bar {
+  position: fixed;
+
+  right: 10px;
+  bottom: 10px;
+
+  z-index: 40;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  padding:
+    5px
+    6px
+    5px
+    10px;
+
+  border-radius: 999px;
+
+  border:
+    1px solid
+    rgba(139, 92, 246, 0.3);
+
+  background:
+    rgba(13, 13, 18, 0.92);
+
+  backdrop-filter:
+    blur(7px);
+
+  box-shadow:
+    0 7px 22px
+    rgba(0, 0, 0, 0.42);
+}
+
+.save-status {
+  max-width: 190px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  font-size: 10px;
+
+  font-weight: 600;
+}
+
+.save-status-loading {
+  color: #94a3b8;
+}
+
+.save-status-saved {
+  color: #4ade80;
+}
+
+.save-status-dirty {
+  color: #facc15;
+}
+
+.save-status-saving {
+  color: #a5b4fc;
+}
+
+.save-status-error {
+  color: #f87171;
+}
+
+.save-btn {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 5px;
+
+  padding: 6px 9px;
+
+  border-radius: 7px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.15);
+
+  background:
+    linear-gradient(
+      135deg,
+      #8b5cf6,
+      #6d28d9
+    );
+
+  color: white;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 9px;
+
+  cursor: pointer;
+}
+
+.save-btn:disabled {
+  opacity: 0.45;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   ESCUDO DO MESTRE
+========================================================= */
+
+.shield-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(300px, 1fr)
+    );
+
+  gap: 10px;
+}
+
+.shield-card {
+  padding: 11px;
+
+  border-radius: 10px;
+
+  border:
+    1px solid
+    rgba(139, 92, 246, 0.23);
+
+  background: #1a1a24;
+}
+
+.shield-card-head {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  margin-bottom: 10px;
+}
+
+.shield-avatar {
+  width: 40px;
+  height: 40px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  overflow: hidden;
+
+  border-radius: 8px;
+
+  background:
+    rgba(139, 92, 246, 0.14);
+
+  color: #a78bfa;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-weight: 700;
+}
+
+.shield-avatar img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+.shield-head-info {
+  flex: 1;
+
+  min-width: 0;
+}
+
+.shield-char-name {
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+
+  color: #a78bfa;
+
+  font-weight: 700;
+
+  font-size: 14px;
+}
+
+.shield-player-name {
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+
+  font-size: 10px;
+
+  opacity: 0.65;
+}
+
+.shield-level {
+  flex-shrink: 0;
+
+  padding: 4px 7px;
+
+  border-radius: 6px;
+
+  background:
+    rgba(139, 92, 246, 0.13);
+
+  color: #c7d2fe;
+
+  text-align: center;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 9px;
+}
+
+.shield-bar-row {
+  display: grid;
+
+  grid-template-columns:
+    27px
+    1fr
+    55px;
+
+  align-items: center;
+
+  gap: 7px;
+
+  margin-bottom: 5px;
+}
+
+.shield-bar-label {
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 9px;
+
+  font-weight: 700;
+}
+
+.shield-bar-label.pv {
+  color: #f87171;
+}
+
+.shield-bar-label.pd {
+  color: #60a5fa;
+}
+
+.shield-bar-track {
+  height: 7px;
+
+  overflow: hidden;
+
+  border-radius: 99px;
+
+  background:
+    rgba(255, 255, 255, 0.07);
+}
+
+.shield-bar-fill {
+  height: 100%;
+}
+
+.shield-bar-fill.pv {
+  background:
+    linear-gradient(
+      90deg,
+      #dc2626,
+      #f87171
+    );
+}
+
+.shield-bar-fill.pd {
+  background:
+    linear-gradient(
+      90deg,
+      #2563eb,
+      #60a5fa
+    );
+}
+
+.shield-bar-value {
+  text-align: right;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 9px;
+
+  opacity: 0.75;
+}
+
+.shield-stat-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      5,
+      1fr
+    );
+
+  gap: 4px;
+
+  margin-top: 9px;
+
+  padding-top: 9px;
+
+  border-top:
+    1px solid
+    rgba(255, 255, 255, 0.05);
+}
+
+.shield-stat {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 2px;
+
+  padding: 4px 2px;
+
+  border-radius: 5px;
+
+  background:
+    rgba(0, 0, 0, 0.2);
+
+  font-size: 11px;
+
+  font-weight: bold;
+}
+
+.shield-meta-row {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 7px;
+
+  margin-top: 7px;
+
+  padding-top: 7px;
+
+  border-top:
+    1px solid
+    rgba(255, 255, 255, 0.05);
+
+  font-size: 9px;
+
+  opacity: 0.62;
+}
+
+

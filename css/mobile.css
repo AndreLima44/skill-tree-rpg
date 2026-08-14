@@ -1,0 +1,275 @@
+/* Mobile consolidado: todas as regras <= 640px em um unico lugar. */
+@media (max-width: 640px) {
+
+/* origem: responsive.css */
+.fade-in {
+    animation: none;
+  }
+
+  .skill-card {
+    transition: none;
+  }
+
+  .skill-card:hover {
+    transform: none;
+  }
+
+/* origem: responsive.css */
+.app-header {
+    padding:
+      7px
+      7px;
+  }
+
+  .header-avatar {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 7px;
+  }
+
+  .page-title {
+    max-width: 46vw;
+
+    font-size:
+      14px;
+  }
+
+  .user-label {
+    max-width: 46vw;
+
+    font-size:
+      9px;
+  }
+
+  .topbar-right {
+    gap: 4px;
+  }
+
+  .admin-label {
+    display:
+      none;
+  }
+
+  .admin-select {
+    max-width:
+      110px;
+
+    padding:
+      4px
+      5px;
+
+    font-size:
+      9px;
+  }
+
+  .logout-btn {
+    padding:
+      4px
+      6px;
+
+    font-size:
+      9px;
+  }
+
+  #tabs-nav {
+    padding:
+      3px
+      5px
+      6px;
+  }
+
+  .tab-btn {
+    padding:
+      6px
+      8px;
+
+    font-size:
+      9px;
+  }
+
+  #main-content {
+    padding-left:
+      5px;
+
+    padding-right:
+      5px;
+  }
+
+  .character-summary-card {
+    padding:
+      7px;
+  }
+
+  .character-fields-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(
+          0,
+          1fr
+        )
+      );
+
+    gap:
+      6px
+      7px;
+  }
+
+  .sheet-wrapper > .grid > div:first-child {
+    grid-template-columns:
+      1fr;
+  }
+
+  .skill-header,
+  .skill-row {
+    grid-template-columns:
+      minmax(
+        85px,
+        1.4fr
+      )
+      31px
+      41px
+      35px
+      41px;
+
+    gap:
+      3px;
+  }
+
+  .skill-name {
+    font-size:
+      10px;
+  }
+
+  .skill-attr {
+    font-size:
+      8px;
+  }
+
+  .skill-cell {
+    font-size:
+      10px;
+  }
+
+  .shield-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .shield-stat-grid {
+    grid-template-columns:
+      repeat(
+        5,
+        1fr
+      );
+  }
+
+  .shield-meta-row {
+    flex-direction:
+      column;
+
+    gap:
+      2px;
+  }
+
+  .rules-quick-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .rules-search-wrap {
+    flex-direction:
+      column;
+
+    align-items:
+      stretch;
+  }
+
+  .save-bar {
+    left:
+      5px;
+
+    right:
+      5px;
+
+    bottom:
+      5px;
+
+    justify-content:
+      space-between;
+
+    border-radius:
+      9px;
+  }
+
+  .save-status {
+    max-width:
+      65vw;
+  }
+
+/* origem: features.css */
+.character-fields-grid { gap: 8px !important; }
+  .character-summary { padding: 9px !important; }
+  .sheet-info-label { font-size: 8px !important; letter-spacing: .04em !important; }
+  .avatar-file-input { max-width:150px; }
+  #save-bar { justify-content:space-between; }
+  .save-btn span { display:none; }
+
+/* origem: features.css */
+.app-header{padding:6px 7px!important}.topbar{align-items:center!important}.header-avatar{width:32px;height:32px}.page-title{max-width:44vw!important;font-size:14px!important}.user-label{max-width:44vw!important}.admin-panel{max-width:40vw}.admin-select{max-width:100%;font-size:9px}.rules-page{padding:12px 8px 30px}.rules-hero{grid-template-columns:1fr}.rules-context{justify-content:flex-start}.rules-search-wrap button{padding:8px}.rules-results{grid-template-columns:1fr}.rule-modal-card{margin:8vh auto 0;max-height:82vh;overflow:auto}
+
+/* origem: features.css */
+.combat-initiative{margin:8px 0 13px;padding:9px}
+  .combat-initiative-head{align-items:flex-start}
+  .combat-initiative-actions{flex-direction:column;min-width:105px}
+  .combat-initiative-actions button{padding:7px 8px}
+  .initiative-order-item{flex-basis:190px;min-height:50px;grid-template-columns:24px 24px minmax(0,1fr) 30px;padding:7px}
+  .initiative-entity-icon{font-size:16px}
+  .initiative-value{font-size:13px}
+
+/* origem: features.css */
+.combat-section-head{align-items:flex-start;gap:8px}.combat-enemy-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.combat-enemy-actions button{min-height:38px}.battle-bestiary-picker-panel{width:calc(100vw - 12px);max-height:88vh}.battle-bestiary-row{grid-template-columns:38px minmax(0,1fr)}.battle-bestiary-row>.primary-action{grid-column:1/-1;width:100%}
+
+/* origem: features.css */
+.quick-action-columns{grid-template-columns:1fr}.enemy-detail-stats{grid-template-columns:repeat(3,1fr)}.session-mode-card{align-items:flex-start;flex-direction:column}.combat-card-tools>button,.quick-resource-pop button{min-height:34px}.battle-card.targeted:after{top:4px;right:5px}
+
+/* origem: features.css */
+.manual-action-grid{grid-template-columns:1fr}.manual-action-buttons{display:grid;grid-template-columns:1fr 1fr}.master-overview{padding:8px}.master-overview-grid{grid-template-columns:1fr}.overview-stats{grid-template-columns:repeat(3,1fr)}.overview-attributes{grid-template-columns:repeat(5,1fr)}.master-overview-card{padding:10px}
+
+/* origem: features.css */
+.mini-sheet-stat-grid{grid-template-columns:repeat(4,1fr);gap:4px}.mini-sheet-stat{padding:7px 3px}.mini-sheet-stat strong{font-size:12px}.mini-sheet-skill-row{grid-template-columns:minmax(90px,1fr) 32px 38px 62px;gap:3px;padding-left:4px;padding-right:4px}.mini-sheet-trained{font-size:7px}
+
+/* origem: features.css */
+.enemy-action-editor-row{grid-template-columns:1fr 90px 30px}.enemy-action-effect-field{grid-column:1 / span 2}.enemy-actions-v3{grid-template-columns:1fr}.enemy-hp-buttons{grid-template-columns:repeat(3,1fr)}.enemy-main-actions{display:grid;grid-template-columns:repeat(3,1fr)}.enemy-editor-v3{width:calc(100vw - 12px);max-height:92vh}
+
+/* origem: features.css */
+.standalone-master-page {
+    padding: 9px 6px 24px;
+  }
+
+/* origem: themes.css */
+.theme-toggle-btn {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+  .theme-toggle-label { display: none; }
+  .theme-toggle-icon { font-size: 16px; }
+  .theme-menu {
+    position: fixed;
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: min(68vh, 520px);
+    overflow: auto;
+  }
+  .theme-options { grid-template-columns: 1fr; }
+  .theme-option { min-height: 52px; }
+
+/* origem: themes.css */
+.master-center{padding:9px 7px 82px}.master-center-header{align-items:flex-start}.master-center-header p{display:none}.master-center-header .primary-action{padding:7px 9px}.master-center-nav{margin-left:-7px;margin-right:-7px;padding-left:7px;padding-right:7px}.master-dashboard-grid{grid-template-columns:1fr}.master-panel,.master-session-panel,.master-log-panel{grid-column:1}.master-stat-grid{grid-template-columns:repeat(3,1fr)}.master-turn-box{align-items:flex-start;flex-wrap:wrap}.master-turn-box>strong{min-width:50%}.master-turn-box>div{width:100%}.master-turn-box button{flex:1}.master-player-grid,.bestiary-grid,.master-rule-grid{grid-template-columns:1fr}.master-notes-textarea{min-height:55vh}.master-player-resources,.bestiary-stats{grid-template-columns:repeat(4,1fr)}.bestiary-editor{width:min(96vw,520px)}
+}

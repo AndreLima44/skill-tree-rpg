@@ -1,0 +1,777 @@
+/* =========================================================
+   CONTEÚDO
+========================================================= */
+
+#main-content {
+  min-height: 0;
+
+  padding:
+    5px
+    10px
+    75px;
+
+  overflow: auto;
+}
+
+
+/* =========================================================
+   SCROLLBAR
+========================================================= */
+
+.scroll-container {
+  scrollbar-width: thin;
+
+  scrollbar-color:
+    #4a4a5a
+    transparent;
+}
+
+.scroll-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-container::-webkit-scrollbar-thumb {
+  background: #4a4a5a;
+
+  border-radius: 999px;
+}
+
+
+/* =========================================================
+   COMPONENTES
+========================================================= */
+
+.glow-box {
+  border-radius: 10px;
+
+  border:
+    1px solid
+    rgba(100, 120, 255, 0.14);
+
+  background:
+    rgba(15, 15, 30, 0.68);
+
+  box-shadow:
+    0 0 12px
+    rgba(80, 100, 255, 0.035);
+}
+
+.section-title {
+  padding-bottom: 6px;
+
+  margin-bottom: 8px;
+
+  border-bottom:
+    1px solid
+    rgba(100, 120, 255, 0.12);
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 10px;
+
+  letter-spacing: 2px;
+
+  color:
+    rgba(160, 170, 255, 0.85);
+}
+
+
+/* =========================================================
+   ÁRVORE
+========================================================= */
+
+.skills-grid {
+  display: grid;
+
+  gap: 18px;
+}
+
+.path-title {
+  margin-bottom: 12px;
+
+  text-align: center;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.11em;
+
+  text-transform: uppercase;
+
+  opacity: 0.6;
+}
+
+.skill-card {
+  position: relative;
+
+  overflow: hidden;
+
+  padding: 13px;
+
+  border-radius: 10px;
+
+  border:
+    1px solid
+    #4a4a5a;
+
+  background: #1a1a24;
+
+  transition: 0.2s;
+}
+
+.skill-card:hover {
+  transform:
+    translateY(-1px);
+
+  border-color:
+    #8b5cf6;
+}
+
+.skill-card.unlocked {
+  border-color: #8b5cf6;
+
+  background:
+    linear-gradient(
+      135deg,
+      #1a1a24,
+      #211735
+    );
+}
+
+.path-line {
+  width: 2px;
+  height: 20px;
+
+  margin: 0 auto;
+
+  background: #4a4a5a;
+}
+
+.path-line.active {
+  background: #8b5cf6;
+}
+
+.badge {
+  display: inline-block;
+
+  padding: 2px 7px;
+
+  border-radius: 999px;
+
+  font-size: 9px;
+
+  font-weight: 600;
+}
+
+.type-badge-ataque {
+  color: #f87171;
+  background:
+    rgba(239, 68, 68, 0.18);
+}
+
+.type-badge-controle {
+  color: #38bdf8;
+  background:
+    rgba(56, 189, 248, 0.18);
+}
+
+.type-badge-defesa {
+  color: #4ade80;
+  background:
+    rgba(34, 197, 94, 0.18);
+}
+
+.type-badge-suporte {
+  color: #facc15;
+  background:
+    rgba(234, 179, 8, 0.18);
+}
+
+.type-badge-area {
+  color: #c084fc;
+  background:
+    rgba(192, 132, 252, 0.18);
+}
+
+.type-badge-cura {
+  color: #34d399;
+  background:
+    rgba(52, 211, 153, 0.18);
+}
+
+.type-badge-aprimoramento {
+  color: #fb923c;
+  background:
+    rgba(249, 115, 22, 0.18);
+}
+
+.type-badge-mobilidade {
+  color: #cbd5e1;
+  background:
+    rgba(148, 163, 184, 0.18);
+}
+
+.checkbox-custom {
+  appearance: none;
+
+  width: 19px;
+  height: 19px;
+
+  border:
+    2px solid
+    #4a4a5a;
+
+  border-radius: 5px;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  position: relative;
+}
+
+.checkbox-custom:checked {
+  border-color: #8b5cf6;
+
+  background: #8b5cf6;
+}
+
+.checkbox-custom:checked::after {
+  content: "✓";
+
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  transform:
+    translate(-50%, -50%);
+
+  font-size: 11px;
+
+  color: white;
+}
+
+.res-dot {
+  display: inline-block;
+
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+
+  border:
+    1px solid
+    #4a4a5a;
+}
+
+.res-dot.filled {
+  background: #8b5cf6;
+
+  border-color: #8b5cf6;
+}
+
+
+/* =========================================================
+   FICHA
+========================================================= */
+
+.sheet-wrapper {
+  width: 100%;
+
+  padding: 3px !important;
+
+  font-family:
+    'Exo 2',
+    sans-serif;
+}
+
+.character-summary-card {
+  padding: 9px 11px;
+
+  margin-bottom: 9px;
+}
+
+.character-fields-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      6,
+      minmax(100px, 1fr)
+    );
+
+  gap: 7px 9px;
+
+  align-items: end;
+}
+
+.sheet-info-label {
+  display: block;
+
+  margin-bottom: 2px;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 8px;
+
+  text-transform: uppercase;
+
+  color:
+    rgba(140, 155, 255, 0.55);
+}
+
+.field-input {
+  width: 100%;
+
+  padding: 4px 2px;
+
+  border: 0;
+
+  border-bottom:
+    1px solid
+    rgba(100, 120, 255, 0.2);
+
+  background: transparent;
+
+  color: white;
+
+  font-size: 13px;
+
+  outline: none;
+}
+
+.field-input:focus {
+  border-bottom-color:
+    #8b5cf6;
+}
+
+.avatar-file-input {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+
+  pointer-events: none;
+}
+
+.avatar-upload-btn {
+  min-height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 4px 7px;
+
+  border-radius: 6px;
+
+  border:
+    1px solid
+    rgba(139, 92, 246, 0.25);
+
+  background:
+    rgba(139, 92, 246, 0.08);
+
+  color: #c4b5fd;
+
+  font-size: 10px;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   GRID DA FICHA
+========================================================= */
+
+.sheet-wrapper > .grid {
+  display: grid;
+
+  grid-template-columns:
+    180px
+    minmax(275px, 0.7fr)
+    minmax(350px, 1.3fr)
+    !important;
+
+  gap: 9px !important;
+
+  align-items: start;
+}
+
+.sheet-wrapper .glow-box {
+  padding: 9px !important;
+}
+
+
+/* =========================================================
+   ATRIBUTOS
+========================================================= */
+
+.attr-box {
+  padding: 5px;
+
+  border-radius: 6px;
+
+  text-align: center;
+
+  background:
+    rgba(10, 10, 25, 0.7);
+
+  border:
+    1px solid
+    rgba(100, 120, 255, 0.12);
+}
+
+.attr-label {
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 9px;
+
+  color:
+    rgba(140, 155, 255, 0.7);
+}
+
+.attr-input {
+  width: 100%;
+
+  border: 0;
+
+  background: transparent;
+
+  color: white;
+
+  text-align: center;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 18px;
+
+  font-weight: 700;
+
+  outline: none;
+}
+
+
+/* =========================================================
+   PV E PD
+========================================================= */
+
+.status-card-pv,
+.status-card-pd {
+  min-width: 0;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  padding: 7px;
+
+  border-radius: 6px;
+}
+
+.status-card-pv {
+  background:
+    rgba(220, 50, 50, 0.22);
+
+  border:
+    1px solid
+    rgba(220, 50, 50, 0.35);
+}
+
+.status-card-pd {
+  background:
+    rgba(100, 120, 255, 0.13);
+
+  border:
+    1px solid
+    rgba(100, 120, 255, 0.28);
+}
+
+.status-label-pv,
+.status-label-pd {
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 9px;
+}
+
+.status-label-pv {
+  color:
+    rgba(255, 100, 100, 0.85);
+}
+
+.status-label-pd {
+  color:
+    rgba(150, 170, 255, 0.85);
+}
+
+.status-btn {
+  width: 29px;
+  height: 29px;
+
+  border-radius: 5px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  background:
+    rgba(255, 255, 255, 0.07);
+
+  color: white;
+
+  cursor: pointer;
+}
+
+.stat-main-input,
+.stat-max-input {
+  width: 38px;
+
+  border: 0;
+
+  background: transparent;
+
+  color: white;
+
+  text-align: center;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-weight: bold;
+
+  outline: none;
+}
+
+.stat-main-input {
+  font-size: 17px;
+}
+
+.stat-max-input {
+  font-size: 14px;
+
+  opacity: 0.6;
+}
+
+.stat-divider {
+  opacity: 0.3;
+}
+
+.mini-label {
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 8px;
+
+  color:
+    rgba(140, 155, 255, 0.55);
+
+  text-align: center;
+}
+
+.mini-input {
+  width: 100%;
+
+  padding: 3px;
+
+  border-radius: 4px;
+
+  border:
+    1px solid
+    rgba(100, 120, 255, 0.15);
+
+  background:
+    rgba(10, 10, 25, 0.45);
+
+  color: white;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   PERÍCIAS
+========================================================= */
+
+.skill-header,
+.skill-row {
+  display: grid;
+
+  grid-template-columns:
+    minmax(95px, 1.5fr)
+    38px
+    48px
+    42px
+    48px;
+
+  align-items: center;
+
+  gap: 4px;
+}
+
+.skill-header {
+  padding-bottom: 4px;
+
+  font-size: 9px;
+
+  opacity: 0.6;
+}
+
+.skill-row {
+  min-height: 29px;
+
+  padding: 3px 0;
+
+  border-bottom:
+    1px solid
+    rgba(255, 255, 255, 0.035);
+}
+
+.skill-name {
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+
+  font-size: 11px;
+}
+
+.skill-attr {
+  text-align: center;
+
+  font-size: 9px;
+
+  opacity: 0.65;
+}
+
+.skill-cell {
+  width: 100%;
+
+  padding: 3px;
+
+  border-radius: 4px;
+
+  border:
+    1px solid
+    rgba(139, 92, 246, 0.18);
+
+  background:
+    rgba(0, 0, 0, 0.25);
+
+  color: white;
+
+  text-align: center;
+
+  font-size: 11px;
+}
+
+.skill-check {
+  justify-self: center;
+
+  width: 15px;
+  height: 15px;
+}
+
+
+/* =========================================================
+   COMBATE
+========================================================= */
+
+.attack-card-mini {
+  display: flex;
+
+  flex-direction: column;
+
+  padding: 6px;
+
+  border-radius: 5px;
+
+  border:
+    1px solid
+    rgba(139, 92, 246, 0.12);
+
+  background:
+    rgba(0, 0, 0, 0.23);
+}
+
+.attack-input-name {
+  width: 100%;
+
+  border: 0;
+
+  border-bottom:
+    1px solid
+    rgba(139, 92, 246, 0.25);
+
+  background: transparent;
+
+  color: #c7d2fe;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 12px;
+
+  outline: none;
+}
+
+.attack-mini-label {
+  min-width: 34px;
+
+  font-family:
+    'Orbitron',
+    sans-serif;
+
+  font-size: 8px;
+
+  color:
+    rgba(165, 180, 252, 0.5);
+}
+
+.attack-input-field {
+  width: 100%;
+
+  height: 20px;
+
+  padding: 0 4px;
+
+  border: 0;
+
+  border-radius: 3px;
+
+  background:
+    rgba(255, 255, 255, 0.035);
+
+  color: white;
+
+  font-size: 12px;
+
+  outline: none;
+}
+
+
+/* =========================================================

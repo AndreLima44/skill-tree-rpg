@@ -1,264 +1,3 @@
-const supabaseUrl = 'https://djtxrejpqunrqvgxobco.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdHhyZWpwcXVucnF2Z3hvYmNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTQ4ODIsImV4cCI6MjA5MDQ5MDg4Mn0.bcYtB_NEpLw1cbU5SEecRtcFnlWzfuPD3iejXlKWJ2A';
-
-const supabaseClient = window.supabase.createClient(
-  supabaseUrl,
-  supabaseKey
-);
-
-
-// =========================================================
-// TEMAS DE CORES
-// =========================================================
-
-const THEME_STORAGE_KEY = 'elemento-frio-theme';
-
-const VALID_THEMES = new Set([
-  'dark',
-  'ice',
-  'fire',
-  'earth',
-  'energy',
-  'void',
-  'gold'
-]);
-
-
-/**
- * Retorna o tema atual.
- * Caso exista um tema antigo/inválido salvo,
- * volta automaticamente para o tema Escuro.
- */
-function getCurrentTheme() {
-  const theme =
-    document.documentElement.dataset.theme || 'dark';
-
-  return VALID_THEMES.has(theme)
-    ? theme
-    : 'dark';
-}
-
-
-/**
- * Atualiza a interface do seletor de temas
- * e também a cor do navegador/mobile.
- */
-function updateThemeUI() {
-  const current = getCurrentTheme();
-
-  document
-    .querySelectorAll('[data-theme-option]')
-    .forEach((option) => {
-      option.classList.toggle(
-        'active',
-        option.dataset.themeOption === current
-      );
-    });
-
-
-  const themeColors = {
-  dark: '#09090b',
-
-  ice: '#07141d',
-
-  fire: '#170b09',
-
-  earth: '#09130d',
-
-  energy: '#07111e',
-
-  void: '#070609',
-
-  gold: '#151007'
-};
-
-
-  const meta =
-    document.querySelector('meta[name="theme-color"]');
-
-  if (meta) {
-    meta.setAttribute(
-      'content',
-      themeColors[current] || themeColors.dark
-    );
-  }
-}
-
-
-/**
- * Altera o tema e salva no navegador.
- */
-window.setTheme = function(theme) {
-
-  if (!VALID_THEMES.has(theme)) {
-    theme = 'dark';
-  }
-
-  document.documentElement.dataset.theme = theme;
-
-  try {
-    localStorage.setItem(
-      THEME_STORAGE_KEY,
-      theme
-    );
-  } catch (_) {}
-
-  updateThemeUI();
-
-  window.closeThemeMenu();
-};
-
-
-/**
- * Abre/fecha o seletor de temas.
- */
-window.toggleThemeMenu = function(event) {
-
-  if (event) {
-    event.stopPropagation();
-  }
-
-  const menu =
-    document.getElementById('theme-menu');
-
-  const button =
-    document.getElementById('theme-toggle-btn');
-
-  if (!menu) {
-    return;
-  }
-
-  const willOpen =
-    menu.classList.contains('hidden');
-
-  menu.classList.toggle(
-    'hidden',
-    !willOpen
-  );
-
-  if (button) {
-    button.setAttribute(
-      'aria-expanded',
-      String(willOpen)
-    );
-  }
-
-  if (willOpen) {
-    updateThemeUI();
-  }
-};
-
-
-/**
- * Fecha o seletor de temas.
- */
-window.closeThemeMenu = function() {
-
-  const menu =
-    document.getElementById('theme-menu');
-
-  const button =
-    document.getElementById('theme-toggle-btn');
-
-  if (menu) {
-    menu.classList.add('hidden');
-  }
-
-  if (button) {
-    button.setAttribute(
-      'aria-expanded',
-      'false'
-    );
-  }
-};
-
-
-/**
- * Fecha o menu ao clicar fora.
- */
-document.addEventListener(
-  'click',
-  (event) => {
-
-    const picker =
-      event.target.closest &&
-      event.target.closest('.theme-picker-wrap');
-
-    if (!picker) {
-      window.closeThemeMenu();
-    }
-  }
-);
-
-
-/**
- * Fecha o menu com ESC.
- */
-document.addEventListener(
-  'keydown',
-  (event) => {
-
-    if (event.key === 'Escape') {
-      window.closeThemeMenu();
-    }
-  }
-);
-
-
-/**
- * Corrige temas antigos salvos.
- *
- * Se alguém tinha "arcane" salvo antes,
- * o sistema converte automaticamente
- * para "void".
- */
-function migrateOldTheme() {
-
-  try {
-
-    const saved =
-      localStorage.getItem(
-        THEME_STORAGE_KEY
-      );
-
-    if (saved === 'arcane') {
-
-      localStorage.setItem(
-        THEME_STORAGE_KEY,
-        'void'
-      );
-
-      document.documentElement.dataset.theme =
-        'void';
-
-      return;
-    }
-
-
-    if (
-      !saved ||
-      !VALID_THEMES.has(saved)
-    ) {
-
-      localStorage.setItem(
-        THEME_STORAGE_KEY,
-        'dark'
-      );
-
-      document.documentElement.dataset.theme =
-        'dark';
-    }
-
-  } catch (_) {}
-}
-
-
-migrateOldTheme();
-
-document.addEventListener(
-  'DOMContentLoaded',
-  updateThemeUI
-);
 // Estado Global
 let currentMainTab = 'personagem';
 let currentTab = 'personagem';
@@ -425,19 +164,23 @@ window.addEventListener('beforeunload', (e) => {
   }
 });
 
-// Corrige a causa mais provável do bug "entrei no perfil e vi uma versão
-// antiga, salvei e apaguei os dados novos": quando o navegador restaura a
-// página pelo cache (botão voltar, trocar de app e voltar, etc.), o
-// JavaScript NÃO roda de novo — a página continua com os dados de
-// personagem que estavam em memória na última vez, que podem estar
-// desatualizados em relação ao que foi salvo depois (em outro dispositivo,
-// outra aba, ou pelo mestre). Forçar um reload garante que a ficha
-// carregada seja sempre a mais recente do banco.
-window.addEventListener('pageshow', (event) => {
-  if (event.persisted) {
-    location.reload();
-  }
-});
+// Ao voltar pelo BFCache, sincroniza somente a area atual em vez de recarregar a pagina inteira.
+async function resyncVisibleSection() {
+  if (isDirty || !currentUser) return;
+  try {
+    if (currentRole === 'admin') {
+      if (currentTab === 'jogadores') return await loadMasterPlayersOverview();
+      if (currentTab === 'combate') return scheduleCombatSync(20);
+      if (currentTab === 'bestiario') return await loadMasterHub('bestiary');
+      if (currentTab === 'mestre') return await loadMasterHub('session');
+      return;
+    }
+    if (currentTab === 'personagem' && selectedUserId) return await loadCharacterData();
+    if (currentTab === 'combate') return scheduleCombatSync(20);
+  } catch (error) { console.warn('Falha ao ressincronizar a tela:', error); }
+}
+window.addEventListener('pageshow', (event) => { if (event.persisted) resyncVisibleSection(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resyncVisibleSection(); });
 
 let characterData = {
   name: 'Novo Personagem',
@@ -575,20 +318,45 @@ function findRuleForSkill(skillName) {
   if(direct) return direct;
   return (book.search(skillName,{limit:5})||[]).map(x=>x.rule).find(r=>normalizeRuleId(r.title)===normalizeRuleId(skillName)) || null;
 }
-function getRuleTerms() {
-  const book=getRuleBook(); if(!book) return [];
-  return book.getAll().flatMap(r=>[r.title,...(r.aliases||[])]).filter(Boolean).sort((a,b)=>b.length-a.length);
+let ruleLinkIndexCache = null;
+let ruleLinkRegexCache = null;
+function buildRuleLinkIndex() {
+  const book = getRuleBook();
+  if (!book) return { map:new Map(), regex:null };
+  if (ruleLinkIndexCache && ruleLinkRegexCache) return { map:ruleLinkIndexCache, regex:ruleLinkRegexCache };
+  const map = new Map();
+  for (const rule of book.getAll()) {
+    for (const term of [rule.title, ...(rule.aliases || [])]) {
+      const clean = String(term || '').trim();
+      if (!clean) continue;
+      const key = clean.toLocaleLowerCase('pt-BR');
+      if (!map.has(key)) map.set(key, rule.id);
+    }
+  }
+  const terms = [...map.keys()].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  ruleLinkIndexCache = map;
+  ruleLinkRegexCache = terms.length ? new RegExp(`(^|[^\\wÀ-ÿ])(${terms.join('|')})(?=$|[^\\wÀ-ÿ])`, 'gi') : null;
+  return { map, regex:ruleLinkRegexCache };
 }
 function escapeAttr(v=''){ return escapeHtml(v).replace(/`/g,'&#096;'); }
 function linkifyRules(text='') {
-  let out=escapeHtml(text); const book=getRuleBook(); if(!book) return out;
-  for(const term of getRuleTerms()) {
-    const results=book.search(term,{limit:3})||[];
-    const exact=results.map(x=>x.rule).find(r=>String(r.title).toLocaleLowerCase('pt-BR')===String(term).toLocaleLowerCase('pt-BR') || (r.aliases||[]).some(a=>String(a).toLocaleLowerCase('pt-BR')===String(term).toLocaleLowerCase('pt-BR')));
-    if(!exact) continue;
-    const safe=String(term).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    out=out.replace(new RegExp(`(^|[^\\wÀ-ÿ])(${safe})(?=$|[^\\wÀ-ÿ])`,'gi'),(m,p,t)=>`${p}<button class="rule-term" type="button" data-rule-id="${exact.id}">${t}</button>`);
+  const { map, regex } = buildRuleLinkIndex();
+  const input = String(text);
+  if (!regex) return escapeHtml(input);
+  regex.lastIndex = 0;
+  let out = '', last = 0, m;
+  while ((m = regex.exec(input))) {
+    const wholeStart = m.index;
+    const prefix = m[1] || '';
+    const term = m[2] || '';
+    const termStart = wholeStart + prefix.length;
+    out += escapeHtml(input.slice(last, termStart));
+    const id = map.get(term.toLocaleLowerCase('pt-BR'));
+    out += id ? `<button class="rule-term" type="button" data-rule-id="${escapeAttr(id)}">${escapeHtml(term)}</button>` : escapeHtml(term);
+    last = termStart + term.length;
+    if (regex.lastIndex <= wholeStart) regex.lastIndex = wholeStart + 1;
   }
+  out += escapeHtml(input.slice(last));
   return out;
 }
 let ruleHistory=[];
@@ -724,29 +492,6 @@ function renderTab(tab) {
 //salvar no supabase quando desbloquear ou bloquear uma skill, e atualizar a interface
 
 
-function renderTabs() {
-  const container = document.getElementById('tabs-container');
-
-  let tabsHtml = Object.entries(TAB_META).map(([key, label]) => {
-    const match = label.match(/^(\S+)\s+(.+)$/);
-    const icon = match ? match[1] : '';
-    const text = match ? match[2] : label;
-
-    return `<button class="tab-btn ${key === currentTab ? 'active' : ''}" data-tab="${key}" onclick="switchTab('${key}')" title="${text}">
-      <span class="nav-icon">${icon}</span>
-      <span class="nav-label">${text}</span>
-    </button>`;
-  }).join('');
-
-  if (currentRole === 'admin') {
-    tabsHtml += `<button class="tab-btn ${currentTab === 'mestre' ? 'active' : ''}" data-tab="mestre" onclick="switchTab('mestre')" title="Mestre">
-      <span class="nav-icon">⚙️</span>
-      <span class="nav-label">Mestre</span>
-    </button>`;
-  }
-
-  container.innerHTML = tabsHtml;
-}
 
 function renderAbilitiesHub() {
   const buttons = Object.entries(SKILL_TAB_META).map(([key,label]) =>
@@ -756,24 +501,6 @@ function renderAbilitiesHub() {
 }
 window.selectSkillElement = function(key){ currentSkillElement=key; const main=document.getElementById('main-content'); main.innerHTML=renderAbilitiesHub(); if(window.lucide) lucide.createIcons(); };
 
-function switchTab(tab) {
-  if (currentTab === 'personagem' && tab !== 'personagem' && isDirty) window.saveCharacterData({silent:true});
-  currentTab = tab;
-  renderTabs();
-  const mainContent = document.getElementById('main-content');
-  document.body.dataset.section = tab;
-  if (tab === 'regras') {
-    mainContent.innerHTML = renderRulesPage(); renderRulesContext(); searchRules('');
-  } else if (tab === 'personagem') {
-    mainContent.innerHTML = renderCharacterSheet(); if (window.lucide) window.lucide.createIcons();
-  } else if (tab === 'habilidades') {
-    mainContent.innerHTML = renderAbilitiesHub(); if (window.lucide) window.lucide.createIcons();
-  } else if (tab === 'combate') {
-    loadCombatView();
-  } else if (tab === 'mestre') {
-    loadMasterHub();
-  }
-}
 
 function subscribeSessionPresence(profile) {
   if (presenceChannel) supabaseClient.removeChannel(presenceChannel);
@@ -807,36 +534,123 @@ function subscribeSessionPresence(profile) {
 async function loadMasterHub(section = masterHubSection) {
   if (currentRole !== 'admin') return;
   masterHubSection = section;
+
   const main = document.getElementById('main-content');
   if (!main) return;
+
+  // O Bestiário é independente de combate/notas. Carregar tudo junto fazia a
+  // tela ficar presa em "Carregando central do mestre..." quando qualquer
+  // outro módulo do Supabase falhava ou demorava.
+  if (section === 'bestiary') {
+    main.innerHTML = '<section class="master-center"><p class="rules-empty">Carregando bestiário...</p></section>';
+    masterSetupWarnings = [];
+
+    try {
+      const [bestiaryRes, encountersRes] = await Promise.allSettled([
+        supabaseClient.from('enemy_templates').select('*').order('name'),
+        supabaseClient.from('encounter_templates').select('*').order('name')
+      ]);
+
+      if (bestiaryRes.status === 'fulfilled') {
+        if (bestiaryRes.value.error) {
+          masterSetupWarnings.push('Bestiário: ' + bestiaryRes.value.error.message);
+          masterBestiaryCache = [];
+        } else {
+          masterBestiaryCache = bestiaryRes.value.data || [];
+        }
+      } else {
+        masterSetupWarnings.push('Bestiário: ' + (bestiaryRes.reason?.message || 'Falha ao carregar.'));
+        masterBestiaryCache = [];
+      }
+
+      if (encountersRes.status === 'fulfilled') {
+        if (encountersRes.value.error) {
+          masterSetupWarnings.push('Encontros: ' + encountersRes.value.error.message);
+          encounterTemplatesCache = [];
+        } else {
+          encounterTemplatesCache = encountersRes.value.data || [];
+        }
+      } else {
+        masterSetupWarnings.push('Encontros: ' + (encountersRes.reason?.message || 'Falha ao carregar.'));
+        encounterTemplatesCache = [];
+      }
+    } catch (error) {
+      console.error('Erro ao carregar Bestiário:', error);
+      masterSetupWarnings.push('Bestiário: ' + (error?.message || 'Erro inesperado.'));
+      masterBestiaryCache = [];
+    }
+
+    if (currentTab !== 'bestiario') return;
+    main.innerHTML = renderStandaloneBestiary();
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+
   main.innerHTML = '<section class="master-center"><p class="rules-empty">Carregando central do mestre...</p></section>';
   masterSetupWarnings = [];
 
-  const combatPromise = fetchCombatState();
-  const bestiaryPromise = supabaseClient.from('enemy_templates').select('*').order('name');
-  const notesPromise = supabaseClient.from('gm_notes').select('*').eq('owner_id', currentUser.id).maybeSingle();
+  try {
+    const results = await Promise.allSettled([
+      fetchCombatState(),
+      supabaseClient.from('enemy_templates').select('*').order('name'),
+      supabaseClient.from('gm_notes').select('*').eq('owner_id', currentUser.id).maybeSingle()
+    ]);
 
-  const [combat, bestiaryRes, notesRes] = await Promise.all([combatPromise, bestiaryPromise, notesPromise]);
-  if (!combat.error) {
-    activeBattle = combat.battle;
-    battleEnemies = combat.enemies || [];
-    masterEnemiesCache = combat.enemies || [];
-    masterPlayersCache = combat.players || [];
-  } else {
-    masterSetupWarnings.push('Combate: ' + combat.error.message);
-  }
+    const combatResult = results[0];
+    const bestiaryResult = results[1];
+    const notesResult = results[2];
 
-  if (bestiaryRes.error) masterSetupWarnings.push('Bestiário: ' + bestiaryRes.error.message);
-  masterBestiaryCache = bestiaryRes.data || [];
+    if (combatResult.status === 'fulfilled') {
+      const combat = combatResult.value;
+      if (!combat.error) {
+        activeBattle = combat.battle;
+        battleEnemies = combat.enemies || [];
+        masterEnemiesCache = combat.enemies || [];
+        masterPlayersCache = combat.players || [];
+      } else {
+        masterSetupWarnings.push('Combate: ' + combat.error.message);
+      }
+    } else {
+      masterSetupWarnings.push('Combate: ' + (combatResult.reason?.message || 'Falha ao carregar.'));
+    }
 
-  if (notesRes.error) masterSetupWarnings.push('Notas: ' + notesRes.error.message);
-  masterNotesCache = notesRes.data?.content || '';
+    if (bestiaryResult.status === 'fulfilled') {
+      const bestiaryRes = bestiaryResult.value;
+      if (bestiaryRes.error) masterSetupWarnings.push('Bestiário: ' + bestiaryRes.error.message);
+      masterBestiaryCache = bestiaryRes.data || [];
+    } else {
+      masterSetupWarnings.push('Bestiário: ' + (bestiaryResult.reason?.message || 'Falha ao carregar.'));
+      masterBestiaryCache = [];
+    }
 
-  masterBattleLogCache = [];
-  if (activeBattle?.id) {
-    const logRes = await supabaseClient.from('battle_log').select('*').eq('battle_id', activeBattle.id).order('created_at', { ascending: false }).limit(30);
-    if (logRes.error) masterSetupWarnings.push('Histórico: ' + logRes.error.message);
-    else masterBattleLogCache = logRes.data || [];
+    if (notesResult.status === 'fulfilled') {
+      const notesRes = notesResult.value;
+      if (notesRes.error) masterSetupWarnings.push('Notas: ' + notesRes.error.message);
+      masterNotesCache = notesRes.data?.content || '';
+    } else {
+      masterSetupWarnings.push('Notas: ' + (notesResult.reason?.message || 'Falha ao carregar.'));
+      masterNotesCache = '';
+    }
+
+    masterBattleLogCache = [];
+    if (activeBattle?.id) {
+      try {
+        const logRes = await supabaseClient
+          .from('battle_log')
+          .select('*')
+          .eq('battle_id', activeBattle.id)
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        if (logRes.error) masterSetupWarnings.push('Histórico: ' + logRes.error.message);
+        else masterBattleLogCache = logRes.data || [];
+      } catch (error) {
+        masterSetupWarnings.push('Histórico: ' + (error?.message || 'Falha ao carregar.'));
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao carregar Central do Mestre:', error);
+    masterSetupWarnings.push(error?.message || 'Erro inesperado ao carregar a Central do Mestre.');
   }
 
   if (currentTab !== 'mestre') return;
@@ -845,31 +659,39 @@ async function loadMasterHub(section = masterHubSection) {
 }
 
 function renderMasterHub() {
+  // A Central do Mestre nao replica paginas que ja existem na navegacao
+  // principal. Jogadores, Combate, Bestiario e Regras possuem um unico
+  // destino oficial. Aqui ficam apenas ferramentas exclusivas da sessao.
   const nav = [
-    ['session','Sessão'],
-    ['players','Personagens'],
-    ['bestiary','Inimigos'],
-    ['notes','Notas'],
-    ['rules','Regras rápidas']
+    ['session','Sessao'],
+    ['notes','Notas']
   ];
-  const content = masterHubSection === 'players' ? renderMasterPlayers()
-    : masterHubSection === 'bestiary' ? renderMasterBestiary()
-    : masterHubSection === 'notes' ? renderMasterNotes()
-    : masterHubSection === 'rules' ? renderMasterQuickRules()
+  const content = masterHubSection === 'notes'
+    ? renderMasterNotes()
     : renderMasterSession();
 
   return `<section class="master-center fade-in">
     <header class="master-center-header">
-      <div><span class="section-eyebrow">CENTRAL DA SESSÃO</span><h2>⚙️ Mestre</h2><p>Prepare encontros, controle personagens e acompanhe a sessão sem sair desta área.</p></div>
+      <div><span class="section-eyebrow">CENTRAL DA SESSAO</span><h2>⚙️ Mestre</h2><p>Ferramentas administrativas da sessao. Jogadores, Combate, Bestiario e Regras ficam nas paginas proprias.</p></div>
       ${activeBattle ? `<button class="primary-action" onclick="switchTab('combate')">Abrir combate →</button>` : `<button class="primary-action" onclick="startBattle();setTimeout(()=>loadMasterHub('session'),250)">+ Iniciar combate</button>`}
     </header>
     <nav class="master-center-nav">${nav.map(([id,label])=>`<button class="${masterHubSection===id?'active':''}" onclick="setMasterSection('${id}')">${label}</button>`).join('')}</nav>
-    ${masterSetupWarnings.length ? `<div class="master-warning"><strong>Configuração pendente</strong><span>Execute o SQL atualizado se algum módulo ainda não existir.</span></div>` : ''}
+    ${masterSetupWarnings.length ? `<div class="master-warning"><strong>Configuracao pendente</strong><span>Algum modulo do Supabase nao respondeu corretamente. As outras paginas continuam independentes.</span></div>` : ''}
     <div class="master-center-content">${content}</div>
   </section>`;
 }
 
-function renderMasterSession() {
+function renderStandaloneBestiary() {
+  return `<section class="standalone-master-page bestiary-page">
+    <header class="section-hero">
+      <div><span class="section-eyebrow">BIBLIOTECA DO MESTRE</span><h2>📚 Bestiario</h2><p>Cadastre, edite e reutilize inimigos. Esta e a unica pagina de gerenciamento do Bestiario.</p></div>
+    </header>
+    ${masterSetupWarnings.length ? `<div class="master-warning"><strong>Bestiario com problema de configuracao</strong><span>${escapeHtml(masterSetupWarnings.join(' • '))}</span></div>` : ''}
+    ${renderMasterBestiary()}
+  </section>`;
+}
+
+function renderMasterSessionBase() {
   const online = masterPlayersCache.filter(p => onlineUserIds.has(p.user_id)).length;
   const injured = masterPlayersCache.filter(p => (p.hp_current ?? 0) < (p.hp_max ?? 0)).length;
   const playerConditions = masterPlayersCache.reduce((n,p)=>n+(Array.isArray(p.conditions)?p.conditions.length:0),0);
@@ -891,9 +713,9 @@ function renderMasterSession() {
       ${activeBattle ? `<div class="master-turn-box"><span>Turno atual</span><strong>${escapeHtml(currentTurn)}</strong><div><button onclick="openInitiativeEditor()">Iniciativa</button><button onclick="advanceBattleTurn()">Próximo turno →</button></div></div>` : ''}
       <div class="master-quick-actions">
         <button onclick="switchTab('combate')">⚔️ Abrir combate</button>
-        <button onclick="setMasterSection('players')">👥 Personagens</button>
+        <button onclick="switchTab('jogadores')">👥 Jogadores</button>
         <button onclick="openBestiaryEditor()">＋ Criar inimigo</button>
-        <button onclick="setMasterSection('rules')">📖 Regras rápidas</button>
+        <button onclick="switchTab('regras')">📖 Regras</button>
       </div>
     </section>
 
@@ -904,12 +726,12 @@ function renderMasterSession() {
     </section>
 
     <section class="master-panel master-preview-panel">
-      <div class="master-panel-head"><div><span class="section-eyebrow">PERSONAGENS</span><h3>Estado do grupo</h3></div><button onclick="setMasterSection('players')">Ver todos</button></div>
-      <div class="master-mini-list">${masterPlayersCache.slice(0,5).map(p=>`<button onclick="openMasterCharacter('${p.user_id}')"><span>${escapeHtml(p.name||'Sem nome')}</span><b>${p.hp_current??0}/${p.hp_max??0} PV</b></button>`).join('') || '<p>Nenhum personagem.</p>'}</div>
+      <div class="master-panel-head"><div><span class="section-eyebrow">PERSONAGENS</span><h3>Estado do grupo</h3></div><button onclick="switchTab('jogadores')">Ver todos</button></div>
+      <div class="master-mini-list">${masterPlayersCache.slice(0,5).map(p=>`<button onclick="openMasterOverviewDetails('${p.user_id}')"><span>${escapeHtml(p.name||'Sem nome')}</span><b>${p.hp_current??0}/${p.hp_max??0} PV</b></button>`).join('') || '<p>Nenhum personagem.</p>'}</div>
     </section>
 
     <section class="master-panel master-preview-panel">
-      <div class="master-panel-head"><div><span class="section-eyebrow">BESTIÁRIO</span><h3>Inimigos salvos</h3></div><button onclick="setMasterSection('bestiary')">Abrir</button></div>
+      <div class="master-panel-head"><div><span class="section-eyebrow">BESTIÁRIO</span><h3>Inimigos salvos</h3></div><button onclick="switchTab('bestiario')">Abrir</button></div>
       <div class="master-mini-list">${masterBestiaryCache.slice(0,5).map(e=>`<button onclick="openBestiaryEditor('${e.id}')"><span>${escapeHtml(e.name)}</span><b>${e.hp_max} PV</b></button>`).join('') || '<p>Nenhum inimigo salvo.</p>'}</div>
     </section>
 
@@ -942,11 +764,6 @@ function renderMasterPlayers() {
   </section>`;
 }
 
-function renderMasterBestiary() {
-  return `<section class="master-section-block"><div class="master-section-title"><div><span class="section-eyebrow">BIBLIOTECA</span><h3>Bestiário / Inimigos</h3><p>Salve inimigos uma vez e reutilize em qualquer combate.</p></div><button class="primary-action" onclick="openBestiaryEditor()">+ Novo inimigo</button></div>
-    <div class="bestiary-grid">${masterBestiaryCache.map(e=>`<article class="bestiary-card"><div class="bestiary-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${escapeAttr(e.image_url)}">`:'👹'}</div><div><strong>${escapeHtml(e.name)}</strong><small>${escapeHtml(e.subtitle||'')}</small></div></div><div class="bestiary-stats"><span>PV <b>${e.hp_max}</b></span><span>DEF <b>${e.defense??10}</b></span><span>ESQ <b>${e.dodge??0}</b></span><span>DESL <b>${e.movement_speed??9}m</b></span></div>${e.conditions?.length?`<div class="condition-chips">${e.conditions.map(c=>`<button onclick="searchRulesFromContext('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}<div class="bestiary-actions"><button onclick="addTemplateToBattle('${e.id}')">+ Combate</button><button onclick="openBestiaryEditor('${e.id}')">Editar</button><button onclick="duplicateBestiary('${e.id}')">Duplicar</button><button class="danger-text" onclick="deleteBestiary('${e.id}')">Excluir</button></div></article>`).join('') || '<div class="combat-empty"><span>👹</span><h3>Bestiário vazio</h3><p>Crie o primeiro inimigo reutilizável.</p></div>'}</div>
-  </section>`;
-}
 
 function renderMasterNotes() {
   return `<section class="master-section-block"><div class="master-section-title"><div><span class="section-eyebrow">PRIVADO</span><h3>Notas da sessão</h3><p>Somente sua conta de mestre consegue ler estas anotações.</p></div><span id="master-notes-status" class="master-note-status">Salvo</span></div><textarea id="master-notes-textarea" class="master-notes-textarea" placeholder="Pistas, segredos, lembretes, eventos futuros..." oninput="scheduleMasterNotesSave(this.value)">${escapeHtml(masterNotesCache)}</textarea></section>`;
@@ -958,7 +775,46 @@ function renderMasterQuickRules() {
   return `<section class="master-section-block"><div class="master-section-title"><div><span class="section-eyebrow">CONSULTA</span><h3>Regras rápidas</h3><p>Abra as mecânicas mais usadas durante a sessão.</p></div><button onclick="switchTab('regras')">Livro completo →</button></div><div class="master-rule-grid">${rules.map(id=>{const r=book?.getById(id);return r?`<button onclick="switchTab('regras');setTimeout(()=>openRuleById('${r.id}'),0)"><span>${escapeHtml(ruleCategoryLabel(r.category))}</span><strong>${escapeHtml(r.title)}</strong><small>${escapeHtml(r.summary||'')}</small></button>`:''}).join('')}</div></section>`;
 }
 
-window.setMasterSection = function(section){ masterHubSection=section; const main=document.getElementById('main-content'); if(main) main.innerHTML=renderMasterHub(); };
+window.setMasterSection = async function(section){
+  if (currentRole !== 'admin') return;
+
+  // Compatibilidade com botoes antigos: secoes que agora possuem uma pagina
+  // oficial sao redirecionadas, evitando dois estados diferentes para a mesma
+  // funcionalidade.
+  if (section === 'players') return switchTab('jogadores');
+  if (section === 'bestiary') return switchTab('bestiario');
+  if (section === 'rules') return switchTab('regras');
+
+  masterHubSection = section === 'notes' ? 'notes' : 'session';
+  if (currentTab !== 'mestre') {
+    currentTab = 'mestre';
+    renderTabs();
+    document.body.dataset.section = 'mestre';
+  }
+  await loadMasterHub(masterHubSection);
+};
+
+
+async function refreshBestiaryOnly(){
+  if(currentRole!=='admin') return false;
+  try {
+    const {data,error}=await supabaseClient.from('enemy_templates').select('*').order('name');
+    if(error){
+      masterSetupWarnings=['Bestiário: '+error.message];
+      return false;
+    }
+    masterBestiaryCache=data||[];
+    return true;
+  } catch(error){
+    masterSetupWarnings=['Bestiário: '+(error?.message||'Falha ao carregar.')];
+    return false;
+  }
+}
+window.openBestiary = async function(){
+  if (currentRole !== 'admin') return;
+  return switchTab('bestiario');
+};
+
 window.rollMasterDie = function(sides){ const result=Math.floor(Math.random()*sides)+1; const box=document.getElementById('master-dice-result'); if(box) box.innerHTML=`<span>d${sides}</span><strong>${result}</strong>`; };
 window.openMasterCharacter = async function(userId){ selectedUserId=userId; const select=document.getElementById('player-select'); if(select) select.value=userId; dataReady=false; setSaveStatus('loading'); await loadSkills(); await loadCharacterData(); switchTab('personagem'); };
 window.openMasterSkills = async function(userId){ selectedUserId=userId; const select=document.getElementById('player-select'); if(select) select.value=userId; dataReady=false; setSaveStatus('loading'); await loadSkills(); await loadCharacterData(); switchTab('habilidades'); };
@@ -984,13 +840,7 @@ async function saveMasterConditions(userId,list,log){ const {error}=await supaba
 window.scheduleMasterNotesSave=function(value){ masterNotesCache=value; const status=document.getElementById('master-notes-status'); if(status)status.textContent='Salvando...'; clearTimeout(masterNotesTimer); masterNotesTimer=setTimeout(()=>saveMasterNotes(value),650); };
 async function saveMasterNotes(value){ const {error}=await supabaseClient.from('gm_notes').upsert({owner_id:currentUser.id,content:value,updated_at:new Date().toISOString()},{onConflict:'owner_id'}); const status=document.getElementById('master-notes-status'); if(error){if(status)status.textContent='Erro ao salvar';console.error(error);return;} if(status)status.textContent='Salvo'; }
 
-window.openBestiaryEditor=function(id=''){
-  const e=masterBestiaryCache.find(x=>x.id===id)||{visibility:{name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true},conditions:[],attacks:[],abilities:[]};
-  document.getElementById('bestiary-editor')?.remove();
-  document.body.insertAdjacentHTML('beforeend',`<div id="bestiary-editor" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('bestiary-editor').remove()"></button><form class="picker-panel bestiary-editor" onsubmit="saveBestiary(event,'${id}')"><div class="picker-head"><div><span class="section-eyebrow">BESTIÁRIO</span><h3>${id?'Editar':'Novo'} inimigo</h3></div><button type="button" onclick="document.getElementById('bestiary-editor').remove()">✕</button></div><label>Nome<input name="name" required value="${escapeAttr(e.name||'')}"></label><label>Subtítulo<input name="subtitle" value="${escapeAttr(e.subtitle||'')}"></label><label>URL da imagem<input name="image_url" value="${escapeAttr(e.image_url||'')}"></label><div class="enemy-form-grid"><label>PV máximo<input name="hp_max" type="number" value="${e.hp_max??10}"></label><label>Defesa<input name="defense" type="number" value="${e.defense??10}"></label><label>Esquiva<input name="dodge" type="number" value="${e.dodge??0}"></label><label>Bloqueio<input name="block" type="number" value="${e.block??0}"></label><label>Deslocamento<input name="movement_speed" type="number" step="0.5" value="${e.movement_speed??9}"></label></div><label>Condições padrão (vírgula)<input name="conditions" value="${escapeAttr((e.conditions||[]).join(', '))}"></label><label>Ataques (um por linha)<textarea name="attacks">${escapeHtml((e.attacks||[]).join('\n'))}</textarea></label><label>Habilidades (uma por linha)<textarea name="abilities">${escapeHtml((e.abilities||[]).join('\n'))}</textarea></label><label>Notas privadas<textarea name="notes">${escapeHtml(e.notes||'')}</textarea></label><fieldset><legend>Visível para jogadores</legend>${[['name','Nome'],['hp','Barra de PV'],['hp_numbers','PV numérico'],['conditions','Condições'],['defense','Defesa'],['dodge','Esquiva'],['block','Bloqueio'],['movement','Deslocamento']].map(([k,l])=>`<label class="check-row"><input type="checkbox" name="vis_${k}" ${e.visibility?.[k]!==false?'checked':''}> ${l}</label>`).join('')}</fieldset><button class="primary-action" type="submit">Salvar no bestiário</button></form></div>`);
-};
 
-window.saveBestiary=async function(ev,id){ ev.preventDefault(); const f=new FormData(ev.target),visibility={}; ['name','hp','hp_numbers','conditions','defense','dodge','block','movement'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on'); const lines=name=>String(f.get(name)||'').split('\n').map(x=>x.trim()).filter(Boolean); const payload={owner_id:currentUser.id,name:f.get('name')||'Inimigo',subtitle:f.get('subtitle')||'',image_url:f.get('image_url')||'',hp_max:+f.get('hp_max')||1,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),attacks:lines('attacks'),abilities:lines('abilities'),notes:f.get('notes')||'',visibility}; const q=id?supabaseClient.from('enemy_templates').update(payload).eq('id',id):supabaseClient.from('enemy_templates').insert(payload); const {error}=await q; if(error){alert('Erro ao salvar bestiário. Execute o SQL atualizado.\n'+error.message);return;} document.getElementById('bestiary-editor')?.remove(); await loadMasterHub('bestiary'); };
 window.deleteBestiary=async function(id){if(!confirm('Excluir este inimigo do bestiário?'))return;const {error}=await supabaseClient.from('enemy_templates').delete().eq('id',id);if(error)alert(error.message);else loadMasterHub('bestiary');};
 window.duplicateBestiary=async function(id){const e=masterBestiaryCache.find(x=>x.id===id);if(!e)return;const {id:_id,created_at,_created,updated_at,_updated,...copy}=e;copy.name=(e.name||'Inimigo')+' (Cópia)';copy.owner_id=currentUser.id;const {error}=await supabaseClient.from('enemy_templates').insert(copy);if(error)alert(error.message);else loadMasterHub('bestiary');};
 window.addTemplateToBattle=async function(id){let battle=activeBattle;if(!battle){const state=await fetchCombatState();battle=state.battle;activeBattle=battle;}if(!battle){alert('Inicie um combate antes de adicionar inimigos.');return;}const e=masterBestiaryCache.find(x=>x.id===id);if(!e)return;const payload={battle_id:battle.id,name:e.name,subtitle:e.subtitle,image_url:e.image_url,hp_current:e.hp_max,hp_max:e.hp_max,defense:e.defense,dodge:e.dodge,block:e.block,movement_speed:e.movement_speed,level:e.level||1,rank:e.rank||'comum',element:e.element||'',damage_reduction:e.damage_reduction||0,conditions:e.conditions||[],attacks:e.attacks||[],abilities:e.abilities||[],notes:e.notes||'',visibility:e.visibility||{}};const {error}=await supabaseClient.from('battle_enemies').insert(payload);if(error){alert(error.message);return;}await logBattle(`${e.name} foi adicionado ao combate`,'enemy');await loadMasterHub('bestiary');};
@@ -1190,14 +1040,6 @@ function filterCharacterPicker(q){q=String(q).toLowerCase();document.querySelect
 async function selectCharacterFromPicker(id){closeCharacterPicker(); const select=document.getElementById('player-select'); if(select) select.value=id; selectedUserId=id; dataReady=false; setSaveStatus('loading'); await loadSkills(); await loadCharacterData();}
 window.openCharacterPicker=openCharacterPicker; window.closeCharacterPicker=closeCharacterPicker; window.filterCharacterPicker=filterCharacterPicker; window.selectCharacterFromPicker=selectCharacterFromPicker;
 
-function subscribeBattleRealtime(){
-  if (battleRealtimeChannel) supabaseClient.removeChannel(battleRealtimeChannel);
-  battleRealtimeChannel = supabaseClient.channel('battle-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'battles'},()=>{ if(currentTab==='combate') scheduleCombatSync(); })
-    .on('postgres_changes',{event:'*',schema:'public',table:'battle_enemies'},()=>{ if(currentTab==='combate') scheduleCombatSync(); })
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'characters'},()=>{ if(currentTab==='combate') scheduleCombatSync(); })
-    .subscribe();
-}
 
 function scheduleCombatSync(delay=120){
   if (battleRefreshTimer) clearTimeout(battleRefreshTimer);
@@ -1213,13 +1055,15 @@ async function fetchCombatState(){
   const battle=battles?.[0]||null;
   let enemies=[];
   if(battle){
-    const res=await supabaseClient.rpc('get_battle_enemies_v2',{p_battle_id:battle.id});
+    const res=await supabaseClient.rpc('get_battle_enemies',{p_battle_id:battle.id});
     if(res.error) return {error:res.error};
     enemies=res.data||[];
   }
   let players=[];
   const shield=await supabaseClient.rpc('get_master_shield_data');
   if(!shield.error) players=shield.data||[];
+  activeBattle=battle;
+  await loadCombatExtras();
   return {battle,enemies,players,error:null};
 }
 
@@ -1322,25 +1166,24 @@ async function syncCombatIncrementally(){
   if(allyCount) allyCount.textContent=`${combatPlayersCache.length} personagens`;
   patchCardCollection('.battle-allies', combatPlayersCache, 'user_id', renderBattlePlayerCard, 'data-player-id');
   patchCardCollection('.battle-enemies', battleEnemies, 'id', renderEnemyCard, 'data-enemy-id', '<p class="combat-placeholder">Nenhum inimigo adicionado.</p>');
+  const main=document.getElementById('main-content');
+  if(main){
+    const oldQ=main.querySelector('.combat-quick-panel');
+    const oldH=main.querySelector('.combat-history');
+    if(oldQ){const h=document.createElement('div');h.innerHTML=renderCombatQuickActions();if(h.firstElementChild)oldQ.replaceWith(h.firstElementChild);}
+    if(oldH){const h=document.createElement('div');h.innerHTML=renderCombatHistory();if(h.firstElementChild)oldH.replaceWith(h.firstElementChild);}
+  }
 }
 
 function renderCombatSetupNotice(error){return `<section class="combat-shell"><div class="combat-empty"><span>⚔️</span><h2>Combate ainda não configurado</h2><p>${escapeHtml(error?.message||'Execute a migração SQL atualizada para ativar batalhas.')}</p><small>O restante do site continua funcionando normalmente.</small></div></section>`}
-function renderCombat(players){
- if(!activeBattle) return `<section class="combat-shell fade-in"><header class="combat-header"><div><span class="section-eyebrow">SESSÃO</span><h2>⚔️ Combate</h2><p>Nenhum combate ativo.</p></div>${currentRole==='admin'?`<button class="primary-action" onclick="startBattle()">+ Iniciar combate</button>`:''}</header><div class="combat-empty"><span>⚔️</span><h3>A mesa está fora de combate</h3><p>Quando o mestre iniciar uma batalha, aliados e inimigos aparecerão aqui em tempo real.</p></div></section>`;
- const allies=players.map(renderBattlePlayerCard).join(''); const enemies=battleEnemies.map(renderEnemyCard).join('')||'<p class="combat-placeholder">Nenhum inimigo adicionado.</p>';
- return `<section class="combat-shell fade-in"><header class="combat-header"><div><span class="section-eyebrow">BATALHA ATIVA</span><h2 data-combat-title>⚔️ ${escapeHtml(activeBattle.name||'Combate')}</h2><p data-combat-meta>Rodada ${activeBattle.round||1}${activeBattle.turn_label?' • Turno: '+escapeHtml(activeBattle.turn_label):''}</p></div>${currentRole==='admin'?`<div class="combat-admin-actions"><button onclick="advanceRound()">+ Rodada</button><button class="danger-action" onclick="endBattle()">Encerrar</button></div>`:''}</header>${renderCombatInitiative()}<div class="combat-section-head"><h3>Aliados</h3><span data-ally-count>${players.length} personagens</span></div><div class="battle-allies">${allies}</div><div class="combat-section-head"><h3>Inimigos</h3>${currentRole==='admin'?`<div class="combat-enemy-actions"><button onclick="openBattleBestiaryPicker()">📚 Do bestiário</button><button onclick="openEnemyEditor()">+ Criar manualmente</button></div>`:''}</div><div class="battle-enemies">${enemies}</div></section>`;
-}
-function renderBattlePlayerCard(pl){const hpMax=pl.hp_max||1,hp=Math.max(0,Math.min(100,Math.round((pl.hp_current||0)/hpMax*100))),pdMax=pl.energy_max||1,pd=Math.max(0,Math.min(100,Math.round((pl.energy_current||0)/pdMax*100))),conds=Array.isArray(pl.conditions)?pl.conditions:[];return `<article class="battle-card ally-card" data-player-id="${escapeHtml(pl.user_id||'')}"><div class="battle-card-head"><div class="battle-avatar">${pl.avatar_url?`<img src="${pl.avatar_url}">`:escapeHtml((pl.name||'?')[0])}</div><div><strong>${escapeHtml(pl.name||'Sem nome')}</strong><small>${escapeHtml([pl.class_name,pl.archetype].filter(Boolean).join(' • '))}</small></div><b>NV ${pl.level||1}</b></div><div class="battle-resource"><span>PV</span><div><i style="width:${hp}%"></i></div><b>${pl.hp_current||0}/${pl.hp_max||0}</b></div><div class="battle-resource pd"><span>PD</span><div><i style="width:${pd}%"></i></div><b>${pl.energy_current||0}/${pl.energy_max||0}</b></div><div class="battle-stats"><span>DEF <b>${pl.defense??10}</b></span><span>ESQ <b>${pl.dodge??0}</b></span><span>BLOQ <b>${pl.block??0}</b></span><span>DESL <b>${pl.movement_speed??9}m</b></span></div>${conds.length?`<div class="condition-chips">${conds.map(c=>`<button onclick="searchRulesFromContext('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}${currentRole==='admin'?`<button class="card-link" onclick="selectCharacterFromPicker('${pl.user_id}');setTimeout(()=>switchTab('personagem'),100)">Abrir ficha →</button>`:''}</article>`}
 function enemyVisible(e,key){return currentRole==='admin'||(e.visibility||{})[key]!==false}
-function renderEnemyCard(e){const max=e.hp_max||1,pct=Math.max(0,Math.min(100,Math.round((e.hp_current||0)/max*100))),v=e.visibility||{},attacks=Array.isArray(e.attacks)?e.attacks:[],abilities=Array.isArray(e.abilities)?e.abilities:[];return `<article class="battle-card enemy-card" data-enemy-id="${escapeHtml(e.id||'')}"><div class="battle-card-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${e.image_url}">`:'👹'}</div><div><strong>${enemyVisible(e,'name')?escapeHtml(e.name||'Inimigo'):'Inimigo desconhecido'}</strong><small>${escapeHtml(e.subtitle||'')}</small></div>${currentRole==='admin'?`<button class="icon-action" onclick="openEnemyEditor('${e.id}')">✎</button>`:''}</div>${enemyVisible(e,'hp')?`<div class="battle-resource enemy-hp"><span>PV</span><div><i style="width:${pct}%"></i></div><b>${enemyVisible(e,'hp_numbers')?`${e.hp_current||0}/${e.hp_max||0}`:'?'}</b></div>`:''}<div class="battle-stats">${enemyVisible(e,'defense')?`<span>DEF <b>${e.defense??10}</b></span>`:''}${enemyVisible(e,'dodge')?`<span>ESQ <b>${e.dodge??0}</b></span>`:''}${enemyVisible(e,'block')?`<span>BLOQ <b>${e.block??0}</b></span>`:''}${enemyVisible(e,'movement')?`<span>DESL <b>${e.movement_speed??9}m</b></span>`:''}</div>${enemyVisible(e,'conditions')&&e.conditions?.length?`<div class="condition-chips">${e.conditions.map(c=>`<button onclick="searchRulesFromContext('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}${enemyVisible(e,'attacks')&&attacks.length?`<div class="enemy-public-info"><strong>Ataques</strong>${attacks.map(a=>`<span>${escapeHtml(a)}</span>`).join('')}</div>`:''}${enemyVisible(e,'abilities')&&abilities.length?`<div class="enemy-public-info"><strong>Habilidades</strong>${abilities.map(a=>`<span>${escapeHtml(a)}</span>`).join('')}</div>`:''}${currentRole==='admin'?`<div class="enemy-quick"><button onclick="changeEnemyHp('${e.id}',-1)">−1 PV</button><button onclick="changeEnemyHp('${e.id}',1)">+1 PV</button></div>`:''}</article>`}
 async function startBattle(){if(currentRole!=='admin')return;const name=prompt('Nome do combate:','Batalha');if(name===null)return;await supabaseClient.from('battles').update({active:false}).eq('active',true);const {error}=await supabaseClient.from('battles').insert({name:name||'Batalha',active:true,round:1,created_by:currentUser.id});if(error)alert(error.message);else scheduleCombatSync(50)}
 async function endBattle(){if(!confirm('Encerrar o combate atual?'))return;await supabaseClient.from('battles').update({active:false}).eq('id',activeBattle.id);scheduleCombatSync(50)}
-async function advanceRound(){await supabaseClient.from('battles').update({round:(activeBattle.round||1)+1}).eq('id',activeBattle.id);}
-function openEnemyEditor(id){const e=battleEnemies.find(x=>x.id===id)||{visibility:{name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true,attacks:false,abilities:false},conditions:[],attacks:[],abilities:[]};document.body.insertAdjacentHTML('beforeend',`<div id="enemy-editor" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('enemy-editor').remove()"></button><form class="picker-panel enemy-editor" onsubmit="saveEnemy(event,'${id||''}')"><div class="picker-head"><div><span class="section-eyebrow">INIMIGO</span><h3>${id?'Editar':'Adicionar'} inimigo</h3></div><button type="button" onclick="document.getElementById('enemy-editor').remove()">✕</button></div><label>Nome<input name="name" value="${escapeAttr(e.name||'')}"></label><label>Subtítulo<input name="subtitle" value="${escapeAttr(e.subtitle||'')}"></label><label>URL da imagem<input name="image_url" value="${escapeAttr(e.image_url||'')}"></label><div class="enemy-form-grid"><label>PV atual<input name="hp_current" type="number" value="${e.hp_current??10}"></label><label>PV máximo<input name="hp_max" type="number" value="${e.hp_max??10}"></label><label>Defesa<input name="defense" type="number" value="${e.defense??10}"></label><label>Esquiva<input name="dodge" type="number" value="${e.dodge??0}"></label><label>Bloqueio<input name="block" type="number" value="${e.block??0}"></label><label>Deslocamento<input name="movement_speed" type="number" value="${e.movement_speed??9}"></label></div><label>Condições (separadas por vírgula)<input name="conditions" value="${escapeAttr((e.conditions||[]).join(', '))}"></label><label>Ataques (um por linha)<textarea name="attacks">${escapeHtml((e.attacks||[]).join('\n'))}</textarea></label><label>Habilidades (uma por linha)<textarea name="abilities">${escapeHtml((e.abilities||[]).join('\n'))}</textarea></label><label>Notas privadas<textarea name="notes">${escapeHtml(e.notes||'')}</textarea></label><fieldset><legend>Visível para jogadores</legend>${[['name','Nome'],['hp','Barra de PV'],['hp_numbers','PV numérico'],['conditions','Condições'],['defense','Defesa'],['dodge','Esquiva'],['block','Bloqueio'],['movement','Deslocamento'],['attacks','Ataques'],['abilities','Habilidades']].map(([k,l])=>`<label class="check-row"><input type="checkbox" name="vis_${k}" ${e.visibility?.[k]!==false?'checked':''}> ${l}</label>`).join('')}</fieldset><button class="primary-action" type="submit">Salvar inimigo</button>${id?`<button class="danger-action" type="button" onclick="deleteEnemy('${id}')">Remover inimigo</button>`:''}</form></div>`)}
+async function advanceRound(){if(!activeBattle?.id)return;await tickBattleEffects();const next=(activeBattle.round||1)+1;await supabaseClient.from('battles').update({round:next}).eq('id',activeBattle.id);await logBattle(`Rodada ${next} iniciada`,'round');scheduleCombatSync(40);}
 async function saveEnemy(ev,id){ev.preventDefault();const f=new FormData(ev.target),visibility={};['name','hp','hp_numbers','conditions','defense','dodge','block','movement','attacks','abilities'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on');const lines=name=>String(f.get(name)||'').split('\n').map(x=>x.trim()).filter(Boolean);const payload={battle_id:activeBattle.id,name:f.get('name')||'Inimigo',subtitle:f.get('subtitle')||'',image_url:f.get('image_url')||'',hp_current:+f.get('hp_current')||0,hp_max:+f.get('hp_max')||0,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),attacks:lines('attacks'),abilities:lines('abilities'),notes:f.get('notes')||'',visibility};const q=id?supabaseClient.from('battle_enemies').update(payload).eq('id',id):supabaseClient.from('battle_enemies').insert(payload);const {error}=await q;if(error)alert(error.message);else{document.getElementById('enemy-editor')?.remove();await logBattle(`${payload.name} ${id?'foi atualizado':'entrou no combate'}`,'enemy');scheduleCombatSync(50)}}
 async function deleteEnemy(id){if(!confirm('Remover este inimigo?'))return;await supabaseClient.from('battle_enemies').delete().eq('id',id);document.getElementById('enemy-editor')?.remove();scheduleCombatSync(50)}
 async function changeEnemyHp(id,d){const e=battleEnemies.find(x=>x.id===id);if(!e)return;await supabaseClient.from('battle_enemies').update({hp_current:Math.max(0,(e.hp_current||0)+d)}).eq('id',id)}
-window.startBattle=startBattle;window.endBattle=endBattle;window.advanceRound=advanceRound;window.openEnemyEditor=openEnemyEditor;window.saveEnemy=saveEnemy;window.deleteEnemy=deleteEnemy;window.changeEnemyHp=changeEnemyHp;
+window.startBattle=startBattle;window.endBattle=endBattle;window.advanceRound=advanceRound;window.saveEnemy=saveEnemy;window.deleteEnemy=deleteEnemy;window.changeEnemyHp=changeEnemyHp;
 
 
 // =========================================================
@@ -1352,14 +1195,37 @@ let battleActionRequestsCache = [];
 let selectedCombatTarget = null;
 let activeGameSession = null;
 
+function patchCombatCharacterFromRealtime(payload) {
+  if (currentTab !== 'combate' || !payload?.new?.user_id) return;
+  const idx = combatPlayersCache.findIndex(p => String(p.user_id) === String(payload.new.user_id));
+  if (idx < 0) return scheduleCombatSync(80);
+  combatPlayersCache[idx] = { ...combatPlayersCache[idx], ...payload.new };
+  const card = document.querySelector(`[data-player-id="${CSS.escape(String(payload.new.user_id))}"]`);
+  if (card) {
+    const box=document.createElement('div'); box.innerHTML=renderBattlePlayerCard(combatPlayersCache[idx]);
+    card.replaceWith(box.firstElementChild);
+  }
+}
+function patchCombatEnemyFromRealtime(payload) {
+  if (currentTab !== 'combate' || currentRole !== 'admin' || !payload?.new?.id) return scheduleCombatSync(80);
+  const idx = battleEnemies.findIndex(e => String(e.id) === String(payload.new.id));
+  if (payload.eventType === 'DELETE') return scheduleCombatSync(50);
+  if (idx < 0) return scheduleCombatSync(50);
+  battleEnemies[idx] = { ...battleEnemies[idx], ...payload.new };
+  const card = document.querySelector(`[data-enemy-id="${CSS.escape(String(payload.new.id))}"]`);
+  if (card) {
+    const box=document.createElement('div'); box.innerHTML=renderEnemyCard(battleEnemies[idx]);
+    card.replaceWith(box.firstElementChild);
+  }
+}
 function subscribeBattleRealtime(){
   if (battleRealtimeChannel) supabaseClient.removeChannel(battleRealtimeChannel);
   battleRealtimeChannel = supabaseClient.channel('battle-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'battles'},()=>{if(currentTab==='combate')scheduleCombatSync();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'battle_enemies'},()=>{if(currentTab==='combate')scheduleCombatSync();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'battle_effects'},()=>{if(currentTab==='combate')scheduleCombatSync();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'battle_action_requests'},()=>{if(currentTab==='combate')scheduleCombatSync();})
-    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'characters'},()=>{if(currentTab==='combate')scheduleCombatSync();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'battles'},()=>{if(currentTab==='combate')scheduleCombatSync(60);})
+    .on('postgres_changes',{event:'*',schema:'public',table:'battle_enemies'},patchCombatEnemyFromRealtime)
+    .on('postgres_changes',{event:'*',schema:'public',table:'battle_effects'},()=>{if(currentTab==='combate')scheduleCombatSync(80);})
+    .on('postgres_changes',{event:'*',schema:'public',table:'battle_action_requests'},()=>{if(currentTab==='combate')scheduleCombatSync(80);})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'characters'},patchCombatCharacterFromRealtime)
     .subscribe();
 }
 function combatEntityKey(type,id){ return `${type}:${id}`; }
@@ -1396,7 +1262,7 @@ async function loadCombatExtras(){
   ]);
   if(!effects.error)battleEffectsCache=effects.data||[];
   if(!logs.error)battleLogPublicCache=logs.data||[];
-  if(!sessions.error)activeGameSession=sessions.data?.[0]||null;
+  if(!sessions.error){activeGameSession=sessions.data?.[0]||null;syncSessionClockTimer();}
   if(!requests.error)battleActionRequestsCache=requests.data||[];
 }
 function effectsFor(type,id){return battleEffectsCache.filter(x=>x.entity_type===type&&String(x.entity_id)===String(id));}
@@ -1455,23 +1321,7 @@ window.resolveCombatAction=async function(id,approved){
   await supabaseClient.from('battle_action_requests').update({status:approved?'approved':'rejected',resolved_by:currentUser.id,resolved_at:new Date().toISOString()}).eq('id',id);
   if(approved)await logBattle(req.message,'action');scheduleCombatSync(30);
 };
-window.useQuickAttack=async function(index){
-  const me=combatPlayersCache.find(p=>String(p.user_id)===String(currentUser?.id));const a=me?.attacks?.[index];if(!a)return;
-  const target=targetLabel(); const damage=prompt(`${a.nome}\nAlvo: ${target}\nDano/resultado informado (opcional):`,a.dano||''); if(damage===null)return;
-  await submitCombatAction(`${me.name} usou ${a.nome}${selectedCombatTarget?' em '+target:''}${damage?' • '+damage:''}`,{kind:'attack',target:selectedCombatTarget,detail:damage}); alert('Ação enviada. O mestre continua responsável por confirmar dano, testes e efeitos.');
-};
-window.useQuickSkill=async function(element,name){
-  let skill=null;for(const path of SKILLS[element]?.paths||[]){skill=path.skills.find(s=>s.name===name);if(skill)break;}if(!skill)return;
-  const me=combatPlayersCache.find(p=>String(p.user_id)===String(currentUser?.id));const target=targetLabel();
-  const result=prompt(`${skill.name}\n${skill.effect||skill.desc||''}\n\nAlvo: ${target}\nInforme dano/resultado (opcional):`,'');if(result===null)return;
-  await submitCombatAction(`${me?.name||'Personagem'} usou ${skill.name}${selectedCombatTarget?' em '+target:''}${result?' • '+result:''}`,{kind:'skill',skill:skill.name,target:selectedCombatTarget,detail:result});
-  if(currentRole==='admin'&&selectedCombatTarget&&confirm('Deseja aplicar uma condição/efeito ao alvo?'))await addBattleEffect(selectedCombatTarget.type,selectedCombatTarget.id);
-};
 
-window.openEnemyDetails=function(id){
-  const e=battleEnemies.find(x=>String(x.id)===String(id));if(!e)return; const can=k=>enemyVisible(e,k); const effects=effectsFor('enemy',id);
-  document.body.insertAdjacentHTML('beforeend',`<div id="enemy-detail-modal" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('enemy-detail-modal').remove()"></button><div class="picker-panel enemy-detail-sheet"><div class="picker-head"><div><span class="section-eyebrow">FICHA DE INIMIGO</span><h3>${can('name')?escapeHtml(e.name):'Inimigo desconhecido'}</h3><small>${escapeHtml([e.rank,e.element,e.level?'Nv. '+e.level:'',e.subtitle].filter(Boolean).join(' • '))}</small></div><button onclick="document.getElementById('enemy-detail-modal').remove()">✕</button></div><div class="enemy-detail-stats">${can('hp')?`<span>PV <b>${can('hp_numbers')?`${e.hp_current}/${e.hp_max}`:'Oculto'}</b></span>`:''}${can('defense')?`<span>DEF <b>${e.defense}</b></span>`:''}${can('dodge')?`<span>ESQ <b>${e.dodge}</b></span>`:''}${can('block')?`<span>BLOQ <b>${e.block}</b></span>`:''}${can('movement')?`<span>DESL <b>${e.movement_speed}m</b></span>`:''}${currentRole==='admin'?`<span>RD <b>${e.damage_reduction||0}</b></span>`:''}</div>${effects.length?`<h4>Condições</h4>${renderTimedEffects('enemy',id)}`:''}${can('attacks')&&e.attacks?.length?`<h4>Ataques</h4><div class="detail-list">${e.attacks.map(x=>`<div>${escapeHtml(typeof x==='string'?x:(x.name||JSON.stringify(x)))}</div>`).join('')}</div>`:''}${can('abilities')&&e.abilities?.length?`<h4>Habilidades</h4><div class="detail-list">${e.abilities.map(x=>`<div>${escapeHtml(typeof x==='string'?x:(x.name||JSON.stringify(x)))}</div>`).join('')}</div>`:''}${currentRole==='admin'&&e.notes?`<h4>Notas privadas</h4><p>${escapeHtml(e.notes)}</p>`:''}</div></div>`);
-};
 window.duplicateBattleEnemy=async function(id,count=1){
   if(currentRole!=='admin')return;const e=battleEnemies.find(x=>String(x.id)===String(id));if(!e)return; const copies=[];
   for(let i=0;i<count;i++)copies.push({battle_id:activeBattle.id,name:e.name,subtitle:e.subtitle,image_url:e.image_url,hp_current:e.hp_max,hp_max:e.hp_max,defense:e.defense,dodge:e.dodge,block:e.block,movement_speed:e.movement_speed,level:e.level||1,rank:e.rank||'comum',element:e.element||'',damage_reduction:e.damage_reduction||0,conditions:e.conditions||[],attacks:e.attacks||[],abilities:e.abilities||[],notes:e.notes||'',visibility:e.visibility||{}});
@@ -1483,30 +1333,18 @@ function renderCombatHistory(){
   return `<section class="combat-history">${battleActionRequestsCache.length?`<div class="pending-actions"><span class="section-eyebrow">AÇÕES PARA CONFIRMAR</span>${battleActionRequestsCache.map(r=>`<div><span>${escapeHtml(r.message)}</span><button onclick="resolveCombatAction('${r.id}',true)">Confirmar</button><button onclick="resolveCombatAction('${r.id}',false)">Ignorar</button></div>`).join('')}</div>`:''}<div class="combat-section-head"><div><span class="section-eyebrow">HISTÓRICO</span><h3>Últimos acontecimentos</h3></div></div><div class="combat-log-list">${battleLogPublicCache.slice(0,12).map(l=>`<div><time>${new Date(l.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</time><span>${escapeHtml(l.message)}</span></div>`).join('')||'<small>Nenhum evento registrado.</small>'}</div></section>`;
 }
 
-// Guarda as implementações anteriores para reaproveitar a sincronização leve.
-const _fetchCombatStateSuite=fetchCombatState;
-fetchCombatState=async function(){const state=await _fetchCombatStateSuite();if(!state.error){activeBattle=state.battle;await loadCombatExtras();}return state;};
-const _syncCombatIncrementallySuite=syncCombatIncrementally;
-syncCombatIncrementally=async function(){await loadCombatExtras();await _syncCombatIncrementallySuite();const main=document.getElementById('main-content');if(currentTab==='combate'&&main){const oldQ=main.querySelector('.combat-quick-panel');const oldH=main.querySelector('.combat-history');if(oldQ){const h=document.createElement('div');h.innerHTML=renderCombatQuickActions();oldQ.replaceWith(h.firstElementChild);}if(oldH){const h=document.createElement('div');h.innerHTML=renderCombatHistory();oldH.replaceWith(h.firstElementChild);}}};
 
 // Substitui somente a composição visual do combate; os dados/realtime continuam os mesmos.
-renderBattlePlayerCard=function(pl){
+function renderBattlePlayerCard(pl){
   const hpMax=pl.hp_max||1,hp=Math.max(0,Math.min(100,Math.round((pl.hp_current||0)/hpMax*100))),pdMax=pl.energy_max||1,pd=Math.max(0,Math.min(100,Math.round((pl.energy_current||0)/pdMax*100))),down=(pl.hp_current||0)<=0;
   return `<article class="battle-card ally-card ${down?'combat-down':''} ${selectedCombatTarget?.type==='player'&&String(selectedCombatTarget.id)===String(pl.user_id)?'targeted':''}" data-player-id="${escapeHtml(pl.user_id||'')}" onclick="selectCombatTarget('player','${escapeAttr(pl.user_id)}')"><div class="battle-card-head"><div class="battle-avatar">${pl.avatar_url?`<img src="${escapeAttr(pl.avatar_url)}">`:escapeHtml((pl.name||'?')[0])}</div><div><strong>${escapeHtml(pl.name||'Sem nome')}</strong><small>${escapeHtml([pl.class_name,pl.archetype].filter(Boolean).join(' • '))}</small></div><b>${down?'💀 0 PV':'NV '+(pl.level||1)}</b></div><div class="battle-resource"><span>PV</span><div><i style="width:${hp}%"></i></div><b>${pl.hp_current||0}/${pl.hp_max||0}</b></div><div class="battle-resource pd"><span>PD</span><div><i style="width:${pd}%"></i></div><b>${pl.energy_current||0}/${pl.energy_max||0}</b></div><div class="battle-stats"><span>DEF <b>${pl.defense??10}</b></span><span>ESQ <b>${pl.dodge??0}</b></span><span>BLOQ <b>${pl.block??0}</b></span><span>DESL <b>${pl.movement_speed??9}m</b></span></div>${renderTimedEffects('player',pl.user_id)}${currentRole==='admin'?`<div class="combat-card-tools" onclick="event.stopPropagation()">${quickButtons(`quickAdjustPlayer.bind(null,'${escapeAttr(pl.user_id)}','hp')`)}<button onclick="addBattleEffect('player','${escapeAttr(pl.user_id)}')">+ Condição</button><button onclick="selectCharacterFromPicker('${escapeAttr(pl.user_id)}');setTimeout(()=>switchTab('personagem'),100)">Ficha →</button></div>`:''}</article>`;
 };
-renderEnemyCard=function(e){
-  const max=e.hp_max||1,pct=Math.max(0,Math.min(100,Math.round((e.hp_current||0)/max*100))),down=(e.hp_current||0)<=0,can=k=>enemyVisible(e,k);
-  return `<article class="battle-card enemy-card ${down?'combat-down':''} ${selectedCombatTarget?.type==='enemy'&&String(selectedCombatTarget.id)===String(e.id)?'targeted':''}" data-enemy-id="${escapeHtml(e.id||'')}" onclick="selectCombatTarget('enemy','${escapeAttr(e.id)}')"><div class="battle-card-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${escapeAttr(e.image_url)}">`:'👹'}</div><div><strong>${can('name')?escapeHtml(e.name||'Inimigo'):'Inimigo desconhecido'}</strong><small>${escapeHtml(e.subtitle||'')}</small></div>${down?'<b>💀 0 PV</b>':''}</div>${can('hp')?`<div class="battle-resource enemy-hp"><span>PV</span><div><i style="width:${pct}%"></i></div><b>${can('hp_numbers')?`${e.hp_current||0}/${e.hp_max||0}`:'?'}</b></div>`:''}<div class="battle-stats">${can('defense')?`<span>DEF <b>${e.defense??10}</b></span>`:''}${can('dodge')?`<span>ESQ <b>${e.dodge??0}</b></span>`:''}${can('block')?`<span>BLOQ <b>${e.block??0}</b></span>`:''}${can('movement')?`<span>DESL <b>${e.movement_speed??9}m</b></span>`:''}</div>${renderTimedEffects('enemy',e.id)}<div class="combat-card-tools" onclick="event.stopPropagation()"><button onclick="openEnemyDetails('${e.id}')">Ver detalhes</button>${currentRole==='admin'?`${quickButtons(`quickAdjustEnemy.bind(null,'${escapeAttr(e.id)}')`)}<button onclick="addBattleEffect('enemy','${e.id}')">+ Condição</button><button onclick="openEnemyEditor('${e.id}')">Editar</button><button onclick="duplicateBattleEnemy('${e.id}',1)">Duplicar ×1</button><button onclick="duplicateBattleEnemy('${e.id}',3)">×3</button>`:''}</div></article>`;
-};
-renderCombat=function(players){
+function renderCombat(players){
   if(!activeBattle)return `<section class="combat-shell"><div class="combat-empty"><span>⚔️</span><h2>Nenhum combate ativo</h2><p>Quando o mestre iniciar uma batalha, jogadores e inimigos aparecerão aqui em tempo real.</p>${currentRole==='admin'?'<button class="primary-action" onclick="startBattle()">+ Iniciar combate</button>':''}</div></section>`;
   const allies=players.map(renderBattlePlayerCard).join('')||'<p class="combat-placeholder">Nenhum personagem.</p>', enemies=battleEnemies.map(renderEnemyCard).join('')||'<p class="combat-placeholder">Nenhum inimigo.</p>';
   return `<section class="combat-shell"><header class="combat-head"><div><span class="section-eyebrow">BATALHA AO VIVO</span><h2 data-combat-title>⚔️ ${escapeHtml(activeBattle.name||'Combate')}</h2><p data-combat-meta>Rodada ${activeBattle.round||1}${activeBattle.turn_label?' • Turno: '+escapeHtml(activeBattle.turn_label):''}</p></div>${currentRole==='admin'?`<div class="combat-admin-actions"><button onclick="advanceRound()">+ Rodada</button><button class="danger-action" onclick="endBattle()">Encerrar</button></div>`:''}</header>${renderCombatInitiative()}${renderCombatQuickActions()}<div class="combat-section-head"><h3>Aliados</h3><span data-ally-count>${players.length} personagens</span></div><div class="battle-allies">${allies}</div><div class="combat-section-head"><h3>Inimigos</h3>${currentRole==='admin'?`<div class="combat-enemy-actions"><button onclick="openBattleBestiaryPicker()">📚 Do bestiário</button><button onclick="openEnemyEditor()">+ Criar manualmente</button></div>`:''}</div><div class="battle-enemies">${enemies}</div>${renderCombatHistory()}</section>`;
 };
 
-// Rodada também reduz efeitos temporários.
-const _advanceRoundSuite=advanceRound;
-advanceRound=async function(){await tickBattleEffects();await _advanceRoundSuite();await logBattle(`Rodada ${(activeBattle?.round||1)+1} iniciada`,'round');scheduleCombatSync(40);};
 window.advanceRound=advanceRound;
 
 // Bestiário: filtros, categoria/elemento/nível e encontros.
@@ -1514,35 +1352,35 @@ let bestiaryFilter={q:'',rank:'all',element:'all'};
 function filterBestiaryList(){document.querySelectorAll('.bestiary-card[data-search]').forEach(card=>{const q=bestiaryFilter.q.toLowerCase();card.hidden=!!((q&&!card.dataset.search.includes(q))||(bestiaryFilter.rank!=='all'&&card.dataset.rank!==bestiaryFilter.rank)||(bestiaryFilter.element!=='all'&&card.dataset.element!==bestiaryFilter.element));});}
 window.setBestiaryFilter=function(kind,value){bestiaryFilter[kind]=value;document.querySelectorAll(`[data-filter-kind="${kind}"]`).forEach(b=>b.classList.toggle('active',b.dataset.filterValue===value));filterBestiaryList();};
 window.searchBestiary=function(v){bestiaryFilter.q=v||'';filterBestiaryList();};
-const _renderMasterBestiaryBase=renderMasterBestiary;
-renderMasterBestiary=function(){
+function renderMasterBestiary(){
   const cards=masterBestiaryCache.map(e=>`<article class="bestiary-card" data-search="${escapeAttr([e.name,e.subtitle,e.rank,e.element].filter(Boolean).join(' ').toLowerCase())}" data-rank="${escapeAttr(e.rank||'comum')}" data-element="${escapeAttr(e.element||'nenhum')}"><div class="bestiary-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${escapeAttr(e.image_url)}">`:'👹'}</div><div><strong>${escapeHtml(e.name)}</strong><small>${escapeHtml((e.rank||'Comum').toUpperCase())} • ${escapeHtml((e.element||'Sem elemento').toUpperCase())} • Nv. ${e.level||1}</small></div></div><div class="bestiary-stats"><span>PV <b>${e.hp_max}</b></span><span>DEF <b>${e.defense??10}</b></span><span>ESQ <b>${e.dodge??0}</b></span><span>DESL <b>${e.movement_speed??9}m</b></span></div><div class="bestiary-actions"><button onclick="addTemplateToBattle('${e.id}')">+ Combate</button><button onclick="openBestiaryEditor('${e.id}')">Editar</button><button onclick="duplicateBestiary('${e.id}')">Duplicar</button></div></article>`).join('');
   return `<section class="master-section"><div class="master-panel-head"><div><span class="section-eyebrow">BESTIÁRIO</span><h3>Biblioteca de inimigos</h3></div><button class="primary-action" onclick="openBestiaryEditor()">+ Novo inimigo</button></div><div class="bestiary-toolbar"><input placeholder="🔎 Pesquisar..." oninput="searchBestiary(this.value)"><div class="filter-row">${['all','comum','elite','chefe'].map(x=>`<button data-filter-kind="rank" data-filter-value="${x}" onclick="setBestiaryFilter('rank','${x}')">${x==='all'?'Todos':x}</button>`).join('')}</div><div class="filter-row">${['all','frio','fogo','agua','terra','vento','energia','vazio'].map(x=>`<button data-filter-kind="element" data-filter-value="${x}" onclick="setBestiaryFilter('element','${x}')">${x==='all'?'Elementos':x}</button>`).join('')}</div></div><div class="bestiary-grid">${cards||'<div class="combat-empty"><h3>Bestiário vazio</h3></div>'}</div>${renderEncounterTemplates()}</section>`;
-};
-const _openBestiaryEditorBase=window.openBestiaryEditor;
-window.openBestiaryEditor=function(id){_openBestiaryEditorBase(id);const form=document.querySelector('#bestiary-editor form');if(!form)return;const e=masterBestiaryCache.find(x=>x.id===id)||{};const grid=form.querySelector('.enemy-form-grid');if(grid)grid.insertAdjacentHTML('afterbegin',`<label>Nível<input name="level" type="number" min="1" value="${e.level||1}"></label><label>Categoria<select name="rank"><option value="comum" ${e.rank==='comum'?'selected':''}>Comum</option><option value="elite" ${e.rank==='elite'?'selected':''}>Elite</option><option value="chefe" ${e.rank==='chefe'?'selected':''}>Chefe</option></select></label><label>Elemento<input name="element" value="${escapeAttr(e.element||'')}"></label><label>RD<input name="damage_reduction" type="number" value="${e.damage_reduction||0}"></label>`);};
-const _saveBestiaryBase=window.saveBestiary;
-window.saveBestiary=async function(ev,id){
-  ev.preventDefault();const f=new FormData(ev.target),visibility={};['name','hp','hp_numbers','conditions','defense','dodge','block','movement'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on');const lines=n=>String(f.get(n)||'').split('\n').map(x=>x.trim()).filter(Boolean);
-  const payload={owner_id:currentUser.id,name:f.get('name')||'Inimigo',subtitle:f.get('subtitle')||'',image_url:f.get('image_url')||'',level:+f.get('level')||1,rank:f.get('rank')||'comum',element:f.get('element')||'',damage_reduction:+f.get('damage_reduction')||0,hp_max:+f.get('hp_max')||1,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),attacks:lines('attacks'),abilities:lines('abilities'),notes:f.get('notes')||'',visibility};
-  const q=id?supabaseClient.from('enemy_templates').update(payload).eq('id',id):supabaseClient.from('enemy_templates').insert(payload);const {error}=await q;if(error){alert('Erro ao salvar. Execute o SQL atualizado.\n'+error.message);return;}document.getElementById('bestiary-editor')?.remove();await loadMasterHub('bestiary');
 };
 
 let encounterTemplatesCache=[];
 async function loadEncounterTemplates(){if(currentRole!=='admin')return;const {data}=await supabaseClient.from('encounter_templates').select('*').order('name');encounterTemplatesCache=data||[];}
-function renderEncounterTemplates(){loadEncounterTemplates().then(()=>{if(currentTab==='mestre'&&masterHubSection==='bestiary'){const box=document.querySelector('[data-encounters]');if(box)box.innerHTML=encounterTemplatesHtml();}});return `<div class="encounter-section" data-encounters>${encounterTemplatesHtml()}</div>`;}
+function renderEncounterTemplates(){return `<div class="encounter-section" data-encounters>${encounterTemplatesHtml()}</div>`;}
 function encounterTemplatesHtml(){return `<div class="master-panel-head"><div><span class="section-eyebrow">ENCONTROS SALVOS</span><h3>Modelos de encontro</h3></div><button onclick="createEncounterTemplate()">+ Salvar encontro atual</button></div><div class="encounter-grid">${encounterTemplatesCache.map(e=>`<article><strong>${escapeHtml(e.name)}</strong><small>${(e.members||[]).reduce((n,x)=>n+(x.quantity||1),0)} inimigos</small><button onclick="startEncounterTemplate('${e.id}')">Iniciar encontro</button><button onclick="deleteEncounterTemplate('${e.id}')">Excluir</button></article>`).join('')||'<small>Nenhum encontro salvo.</small>'}</div>`;}
 window.createEncounterTemplate=async function(){const name=prompt('Nome do encontro:');if(!name)return;const members=masterBestiaryCache.filter(e=>confirm(`Incluir ${e.name}?`)).map(e=>({template_id:e.id,quantity:Math.max(1,parseInt(prompt(`Quantidade de ${e.name}:`,'1'))||1)}));if(!members.length)return;const {error}=await supabaseClient.from('encounter_templates').insert({owner_id:currentUser.id,name,members});if(error)alert(error.message);else{await loadEncounterTemplates();loadMasterHub('bestiary');}};
 window.startEncounterTemplate=async function(id){const enc=encounterTemplatesCache.find(x=>x.id===id);if(!enc)return;if(!activeBattle){alert('Inicie um combate primeiro.');return;}for(const m of enc.members||[]){for(let i=0;i<(m.quantity||1);i++)await addTemplateToBattle(m.template_id);}await logBattle(`Encontro “${enc.name}” adicionado`,'encounter');scheduleCombatSync(50);};
 window.deleteEncounterTemplate=async function(id){if(!confirm('Excluir encontro salvo?'))return;await supabaseClient.from('encounter_templates').delete().eq('id',id);await loadEncounterTemplates();loadMasterHub('bestiary');};
 
 // Modo de sessão — cronômetro e resumo persistente.
-window.startGameSession=async function(){if(currentRole!=='admin')return;const title=prompt('Nome da sessão:','Nova sessão');if(!title)return;await supabaseClient.from('game_sessions').update({active:false,ended_at:new Date().toISOString()}).eq('active',true);const {data,error}=await supabaseClient.from('game_sessions').insert({owner_id:currentUser.id,title,active:true}).select().single();if(error)return alert(error.message);activeGameSession=data;loadMasterHub('session');};
-window.endGameSession=async function(){if(!activeGameSession)return;const notes=prompt('Resumo/notas finais da sessão:',activeGameSession.notes||'')??activeGameSession.notes;await supabaseClient.from('game_sessions').update({active:false,ended_at:new Date().toISOString(),notes}).eq('id',activeGameSession.id);activeGameSession=null;loadMasterHub('session');};
+window.startGameSession=async function(){if(currentRole!=='admin')return;const title=prompt('Nome da sessão:','Nova sessão');if(!title)return;await supabaseClient.from('game_sessions').update({active:false,ended_at:new Date().toISOString()}).eq('active',true);const {data,error}=await supabaseClient.from('game_sessions').insert({owner_id:currentUser.id,title,active:true}).select().single();if(error)return alert(error.message);activeGameSession=data;syncSessionClockTimer();loadMasterHub('session');};
+window.endGameSession=async function(){if(!activeGameSession)return;const notes=prompt('Resumo/notas finais da sessão:',activeGameSession.notes||'')??activeGameSession.notes;await supabaseClient.from('game_sessions').update({active:false,ended_at:new Date().toISOString(),notes}).eq('id',activeGameSession.id);activeGameSession=null;syncSessionClockTimer();loadMasterHub('session');};
 function sessionElapsed(){if(!activeGameSession)return '';const ms=Date.now()-new Date(activeGameSession.started_at).getTime();const h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000),s=Math.floor(ms%60000/1000);return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');}
-const _renderMasterSessionBase=renderMasterSession;
-renderMasterSession=function(){const base=_renderMasterSessionBase();return `<section class="session-mode-card"><div><span class="section-eyebrow">MODO DE SESSÃO</span><h2>${activeGameSession?'🎲 '+escapeHtml(activeGameSession.title):'Nenhuma sessão iniciada'}</h2><p>${activeGameSession?'Duração: <b data-session-clock>'+sessionElapsed()+'</b>':'Registre a sessão e mantenha notas/resumo.'}</p></div>${activeGameSession?'<button class="danger-action" onclick="endGameSession()">Finalizar sessão</button>':'<button class="primary-action" onclick="startGameSession()">▶ Iniciar sessão</button>'}</section>${base}`;};
-setInterval(()=>{const el=document.querySelector('[data-session-clock]');if(el&&activeGameSession)el.textContent=sessionElapsed();},1000);
+function renderMasterSession(){const base=renderMasterSessionBase();return `<section class="session-mode-card"><div><span class="section-eyebrow">MODO DE SESSÃO</span><h2>${activeGameSession?'🎲 '+escapeHtml(activeGameSession.title):'Nenhuma sessão iniciada'}</h2><p>${activeGameSession?'Duração: <b data-session-clock>'+sessionElapsed()+'</b>':'Registre a sessão e mantenha notas/resumo.'}</p></div>${activeGameSession?'<button class="danger-action" onclick="endGameSession()">Finalizar sessão</button>':'<button class="primary-action" onclick="startGameSession()">▶ Iniciar sessão</button>'}</section>${base}`;};
+let sessionClockTimer = null;
+function syncSessionClockTimer() {
+  if (sessionClockTimer) { clearInterval(sessionClockTimer); sessionClockTimer = null; }
+  if (!activeGameSession) return;
+  sessionClockTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible' || !activeGameSession) return;
+    const el = document.querySelector('[data-session-clock]');
+    if (el) el.textContent = sessionElapsed();
+  }, 1000);
+}
+
 
 async function login() {
   const email = document.getElementById('email').value.trim();
@@ -2176,7 +2014,6 @@ document.addEventListener('change', (e) => {
   markDirtyAndScheduleAutosave(getDirtyFieldFromElement(e.target));
 });
 
-checkSession();
 
 
 
@@ -2192,3 +2029,5 @@ document.addEventListener('click', (event) => {
 });
 
 window.loadMasterHub = loadMasterHub;
+
+
