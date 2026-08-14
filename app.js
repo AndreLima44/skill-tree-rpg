@@ -993,7 +993,7 @@ window.openBestiaryEditor=function(id=''){
 window.saveBestiary=async function(ev,id){ ev.preventDefault(); const f=new FormData(ev.target),visibility={}; ['name','hp','hp_numbers','conditions','defense','dodge','block','movement'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on'); const lines=name=>String(f.get(name)||'').split('\n').map(x=>x.trim()).filter(Boolean); const payload={owner_id:currentUser.id,name:f.get('name')||'Inimigo',subtitle:f.get('subtitle')||'',image_url:f.get('image_url')||'',hp_max:+f.get('hp_max')||1,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),attacks:lines('attacks'),abilities:lines('abilities'),notes:f.get('notes')||'',visibility}; const q=id?supabaseClient.from('enemy_templates').update(payload).eq('id',id):supabaseClient.from('enemy_templates').insert(payload); const {error}=await q; if(error){alert('Erro ao salvar bestiário. Execute o SQL atualizado.\n'+error.message);return;} document.getElementById('bestiary-editor')?.remove(); await loadMasterHub('bestiary'); };
 window.deleteBestiary=async function(id){if(!confirm('Excluir este inimigo do bestiário?'))return;const {error}=await supabaseClient.from('enemy_templates').delete().eq('id',id);if(error)alert(error.message);else loadMasterHub('bestiary');};
 window.duplicateBestiary=async function(id){const e=masterBestiaryCache.find(x=>x.id===id);if(!e)return;const {id:_id,created_at,_created,updated_at,_updated,...copy}=e;copy.name=(e.name||'Inimigo')+' (Cópia)';copy.owner_id=currentUser.id;const {error}=await supabaseClient.from('enemy_templates').insert(copy);if(error)alert(error.message);else loadMasterHub('bestiary');};
-window.addTemplateToBattle=async function(id){let battle=activeBattle;if(!battle){const state=await fetchCombatState();battle=state.battle;activeBattle=battle;}if(!battle){alert('Inicie um combate antes de adicionar inimigos.');return;}const e=masterBestiaryCache.find(x=>x.id===id);if(!e)return;const payload={battle_id:battle.id,name:e.name,subtitle:e.subtitle,image_url:e.image_url,hp_current:e.hp_max,hp_max:e.hp_max,defense:e.defense,dodge:e.dodge,block:e.block,movement_speed:e.movement_speed,conditions:e.conditions||[],attacks:e.attacks||[],abilities:e.abilities||[],notes:e.notes||'',visibility:e.visibility||{}};const {error}=await supabaseClient.from('battle_enemies').insert(payload);if(error){alert(error.message);return;}await logBattle(`${e.name} foi adicionado ao combate`,'enemy');await loadMasterHub('bestiary');};
+window.addTemplateToBattle=async function(id){let battle=activeBattle;if(!battle){const state=await fetchCombatState();battle=state.battle;activeBattle=battle;}if(!battle){alert('Inicie um combate antes de adicionar inimigos.');return;}const e=masterBestiaryCache.find(x=>x.id===id);if(!e)return;const payload={battle_id:battle.id,name:e.name,subtitle:e.subtitle,image_url:e.image_url,hp_current:e.hp_max,hp_max:e.hp_max,defense:e.defense,dodge:e.dodge,block:e.block,movement_speed:e.movement_speed,level:e.level||1,rank:e.rank||'comum',element:e.element||'',damage_reduction:e.damage_reduction||0,conditions:e.conditions||[],attacks:e.attacks||[],abilities:e.abilities||[],notes:e.notes||'',visibility:e.visibility||{}};const {error}=await supabaseClient.from('battle_enemies').insert(payload);if(error){alert(error.message);return;}await logBattle(`${e.name} foi adicionado ao combate`,'enemy');await loadMasterHub('bestiary');};
 
 
 async function ensureBestiaryLoaded(){
@@ -1069,7 +1069,7 @@ window.addTemplateToActiveBattle=async function(id,button){
     const e=masterBestiaryCache.find(x=>String(x.id)===String(id));
     if(!e){alert('Inimigo não encontrado no bestiário.');return;}
     const visibility={name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true,attacks:false,abilities:false,...(e.visibility||{})};
-    const payload={battle_id:battle.id,name:e.name||'Inimigo',subtitle:e.subtitle||'',image_url:e.image_url||'',hp_current:e.hp_max??10,hp_max:e.hp_max??10,defense:e.defense??10,dodge:e.dodge??0,block:e.block??0,movement_speed:e.movement_speed??9,conditions:Array.isArray(e.conditions)?e.conditions:[],attacks:Array.isArray(e.attacks)?e.attacks:[],abilities:Array.isArray(e.abilities)?e.abilities:[],notes:e.notes||'',visibility};
+    const payload={battle_id:battle.id,name:e.name||'Inimigo',subtitle:e.subtitle||'',image_url:e.image_url||'',hp_current:e.hp_max??10,hp_max:e.hp_max??10,defense:e.defense??10,dodge:e.dodge??0,block:e.block??0,movement_speed:e.movement_speed??9,level:e.level||1,rank:e.rank||'comum',element:e.element||'',damage_reduction:e.damage_reduction||0,conditions:Array.isArray(e.conditions)?e.conditions:[],attacks:Array.isArray(e.attacks)?e.attacks:[],abilities:Array.isArray(e.abilities)?e.abilities:[],notes:e.notes||'',visibility};
     const {error}=await supabaseClient.from('battle_enemies').insert(payload);
     if(error){alert('Erro ao adicionar ao combate.\n'+error.message);return;}
     await logBattle(`${e.name||'Inimigo'} foi adicionado ao combate`,'enemy');
@@ -1213,7 +1213,7 @@ async function fetchCombatState(){
   const battle=battles?.[0]||null;
   let enemies=[];
   if(battle){
-    const res=await supabaseClient.rpc('get_battle_enemies',{p_battle_id:battle.id});
+    const res=await supabaseClient.rpc('get_battle_enemies_v2',{p_battle_id:battle.id});
     if(res.error) return {error:res.error};
     enemies=res.data||[];
   }
@@ -1341,6 +1341,208 @@ async function saveEnemy(ev,id){ev.preventDefault();const f=new FormData(ev.targ
 async function deleteEnemy(id){if(!confirm('Remover este inimigo?'))return;await supabaseClient.from('battle_enemies').delete().eq('id',id);document.getElementById('enemy-editor')?.remove();scheduleCombatSync(50)}
 async function changeEnemyHp(id,d){const e=battleEnemies.find(x=>x.id===id);if(!e)return;await supabaseClient.from('battle_enemies').update({hp_current:Math.max(0,(e.hp_current||0)+d)}).eq('id',id)}
 window.startBattle=startBattle;window.endBattle=endBattle;window.advanceRound=advanceRound;window.openEnemyEditor=openEnemyEditor;window.saveEnemy=saveEnemy;window.deleteEnemy=deleteEnemy;window.changeEnemyHp=changeEnemyHp;
+
+
+// =========================================================
+// COMBAT SUITE 2.0 — alvo, acoes rapidas, efeitos, encontros e sessao
+// =========================================================
+let battleEffectsCache = [];
+let battleLogPublicCache = [];
+let battleActionRequestsCache = [];
+let selectedCombatTarget = null;
+let activeGameSession = null;
+
+function subscribeBattleRealtime(){
+  if (battleRealtimeChannel) supabaseClient.removeChannel(battleRealtimeChannel);
+  battleRealtimeChannel = supabaseClient.channel('battle-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'battles'},()=>{if(currentTab==='combate')scheduleCombatSync();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'battle_enemies'},()=>{if(currentTab==='combate')scheduleCombatSync();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'battle_effects'},()=>{if(currentTab==='combate')scheduleCombatSync();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'battle_action_requests'},()=>{if(currentTab==='combate')scheduleCombatSync();})
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'characters'},()=>{if(currentTab==='combate')scheduleCombatSync();})
+    .subscribe();
+}
+function combatEntityKey(type,id){ return `${type}:${id}`; }
+function conditionName(c){ return typeof c==='string'?c:(c?.name||'Condição'); }
+function conditionDuration(c){ return typeof c==='object'&&c?Number(c.rounds||0):0; }
+function currentCombatActor(){
+  const order=Array.isArray(activeBattle?.turn_order)?activeBattle.turn_order:[];
+  return order[activeBattle?.turn_index||0]||null;
+}
+function isMyCombatTurn(){
+  const actor=currentCombatActor();
+  return !actor || (actor.type==='player' && String(actor.id)===String(currentUser?.id));
+}
+function targetLabel(){
+  if(!selectedCombatTarget)return 'Nenhum alvo selecionado';
+  if(selectedCombatTarget.type==='enemy') return battleEnemies.find(e=>String(e.id)===String(selectedCombatTarget.id))?.name||'Inimigo';
+  return combatPlayersCache.find(e=>String(e.user_id)===String(selectedCombatTarget.id))?.name||'Personagem';
+}
+window.selectCombatTarget=function(type,id){
+  selectedCombatTarget={type,id:String(id)};
+  document.querySelectorAll('.battle-card.targeted').forEach(x=>x.classList.remove('targeted'));
+  const attr=type==='enemy'?'data-enemy-id':'data-player-id';
+  document.querySelector(`[${attr}="${CSS.escape(String(id))}"]`)?.classList.add('targeted');
+  const label=document.querySelector('[data-target-label]'); if(label)label.textContent=targetLabel();
+};
+
+async function loadCombatExtras(){
+  if(!activeBattle?.id){battleEffectsCache=[];battleLogPublicCache=[];return;}
+  const [effects,logs,sessions,requests]=await Promise.all([
+    supabaseClient.from('battle_effects').select('*').eq('battle_id',activeBattle.id).order('created_at'),
+    supabaseClient.from('battle_log').select('*').eq('battle_id',activeBattle.id).order('created_at',{ascending:false}).limit(30),
+    currentRole==='admin'?supabaseClient.from('game_sessions').select('*').eq('active',true).order('started_at',{ascending:false}).limit(1):Promise.resolve({data:[]}),
+    supabaseClient.from('battle_action_requests').select('*').eq('battle_id',activeBattle.id).eq('status','pending').order('created_at',{ascending:false})
+  ]);
+  if(!effects.error)battleEffectsCache=effects.data||[];
+  if(!logs.error)battleLogPublicCache=logs.data||[];
+  if(!sessions.error)activeGameSession=sessions.data?.[0]||null;
+  if(!requests.error)battleActionRequestsCache=requests.data||[];
+}
+function effectsFor(type,id){return battleEffectsCache.filter(x=>x.entity_type===type&&String(x.entity_id)===String(id));}
+function renderTimedEffects(type,id){
+  const list=effectsFor(type,id); if(!list.length)return '';
+  return `<div class="condition-chips timed-effects">${list.map(e=>`<button onclick="searchRulesFromContext('${escapeAttr(e.name)}')" title="Abrir regra">${escapeHtml(e.name)}${e.rounds_remaining>0?` <b>• ${e.rounds_remaining}r</b>`:''}</button>${currentRole==='admin'?`<button class="effect-remove" onclick="event.stopPropagation();removeBattleEffect('${e.id}')">×</button>`:''}`).join('')}</div>`;
+}
+window.addBattleEffect=async function(type,id){
+  if(currentRole!=='admin')return;
+  const name=prompt('Condição/efeito:','Congelado'); if(!name)return;
+  const rounds=Math.max(0,parseInt(prompt('Duração em rodadas (0 = sem duração):','2'))||0);
+  const {error}=await supabaseClient.from('battle_effects').insert({battle_id:activeBattle.id,entity_type:type,entity_id:String(id),name:name.trim(),rounds_remaining:rounds,created_by:currentUser.id});
+  if(error){alert('Execute o SQL atualizado.\n'+error.message);return;} await logBattle(`${name} aplicado em ${type==='enemy'?(battleEnemies.find(e=>String(e.id)===String(id))?.name||'inimigo'):(combatPlayersCache.find(p=>String(p.user_id)===String(id))?.name||'personagem')}`,'condition'); scheduleCombatSync(40);
+};
+window.removeBattleEffect=async function(id){await supabaseClient.from('battle_effects').delete().eq('id',id);scheduleCombatSync(40);};
+async function tickBattleEffects(){
+  if(currentRole!=='admin'||!activeBattle?.id)return;
+  const expiring=battleEffectsCache.filter(e=>e.rounds_remaining===1);
+  const ticking=battleEffectsCache.filter(e=>e.rounds_remaining>1);
+  await Promise.all([
+    ...expiring.map(e=>supabaseClient.from('battle_effects').delete().eq('id',e.id)),
+    ...ticking.map(e=>supabaseClient.from('battle_effects').update({rounds_remaining:e.rounds_remaining-1}).eq('id',e.id))
+  ]);
+  for(const e of expiring) await logBattle(`${e.name} expirou`,'condition');
+}
+
+window.quickAdjustPlayer=async function(userId,resource,delta){
+  if(currentRole!=='admin')return;
+  const {error}=await supabaseClient.rpc('master_adjust_character',{p_user_id:userId,p_resource:resource,p_delta:delta});
+  if(error){alert(error.message);return;} const p=combatPlayersCache.find(x=>String(x.user_id)===String(userId)); await logBattle(`${p?.name||'Personagem'} ${delta>0?'recuperou':'perdeu'} ${Math.abs(delta)} ${resource==='hp'?'PV':'PD'}`,'resource'); scheduleCombatSync(30);
+};
+window.quickAdjustEnemy=async function(id,delta){
+  if(currentRole!=='admin')return; const e=battleEnemies.find(x=>String(x.id)===String(id)); if(!e)return;
+  const next=Math.max(0,Math.min(e.hp_max||999999,(e.hp_current||0)+delta)); const {error}=await supabaseClient.from('battle_enemies').update({hp_current:next}).eq('id',id); if(error)return alert(error.message);
+  await logBattle(`${e.name} ${delta>0?'recuperou':'perdeu'} ${Math.abs(delta)} PV`,'resource'); scheduleCombatSync(30);
+};
+function quickButtons(handler){return `<div class="quick-resource-pop"><button onclick="${handler}(-10)">−10</button><button onclick="${handler}(-5)">−5</button><button onclick="${handler}(-1)">−1</button><button onclick="${handler}(1)">+1</button><button onclick="${handler}(5)">+5</button><button onclick="${handler}(10)">+10</button></div>`;}
+
+function getMyUnlockedSkills(){
+  const out=[]; if(typeof SKILLS==='undefined')return out;
+  Object.entries(unlocked||{}).forEach(([key,on])=>{if(!on)return;const [element,name]=key.split('__');for(const path of SKILLS[element]?.paths||[]){const s=path.skills.find(x=>x.name===name);if(s){out.push({...s,element});break;}}}); return out;
+}
+function renderCombatQuickActions(){
+  const me=combatPlayersCache.find(p=>String(p.user_id)===String(currentUser?.id)); if(!me)return '';
+  const attacks=Array.isArray(me.attacks)?me.attacks:[]; const skills=getMyUnlockedSkills();
+  return `<section class="combat-quick-panel"><div class="combat-section-head"><div><span class="section-eyebrow">SEU TURNO</span><h3>Ações rápidas</h3></div><span class="turn-state ${isMyCombatTurn()?'ready':'waiting'}">${isMyCombatTurn()?'Pronto para agir':'Aguardando turno'}</span></div><div class="target-strip">🎯 Alvo: <strong data-target-label>${escapeHtml(targetLabel())}</strong></div><div class="quick-action-columns"><div><h4>⚔️ Ataques</h4>${attacks.filter(a=>a?.nome).map((a,i)=>`<button class="combat-action-card" onclick="useQuickAttack(${i})"><strong>${escapeHtml(a.nome)}</strong><small>${escapeHtml([a.teste,a.dano,a.alcance].filter(Boolean).join(' • '))}</small></button>`).join('')||'<small>Nenhum ataque cadastrado.</small>'}</div><div><h4>✨ Habilidades</h4>${skills.slice(0,10).map(s=>`<button class="combat-action-card" onclick="useQuickSkill('${escapeAttr(s.element)}','${escapeAttr(s.name)}')"><strong>${escapeHtml(s.name)}</strong><small>${escapeHtml([s.type,s.range,`RES ${s.res}`].filter(Boolean).join(' • '))}</small></button>`).join('')||'<small>Nenhuma habilidade adquirida.</small>'}</div></div></section>`;
+}
+async function submitCombatAction(message,payload={}){
+  if(!activeBattle?.id)return;
+  if(currentRole==='admin'){await logBattle(message,'action');return;}
+  const {error}=await supabaseClient.from('battle_action_requests').insert({battle_id:activeBattle.id,user_id:currentUser.id,message,payload,status:'pending'});
+  if(error)alert('Não foi possível enviar a ação. Execute o SQL atualizado.\n'+error.message);
+}
+window.resolveCombatAction=async function(id,approved){
+  if(currentRole!=='admin')return;const req=battleActionRequestsCache.find(x=>String(x.id)===String(id));if(!req)return;
+  await supabaseClient.from('battle_action_requests').update({status:approved?'approved':'rejected',resolved_by:currentUser.id,resolved_at:new Date().toISOString()}).eq('id',id);
+  if(approved)await logBattle(req.message,'action');scheduleCombatSync(30);
+};
+window.useQuickAttack=async function(index){
+  const me=combatPlayersCache.find(p=>String(p.user_id)===String(currentUser?.id));const a=me?.attacks?.[index];if(!a)return;
+  const target=targetLabel(); const damage=prompt(`${a.nome}\nAlvo: ${target}\nDano/resultado informado (opcional):`,a.dano||''); if(damage===null)return;
+  await submitCombatAction(`${me.name} usou ${a.nome}${selectedCombatTarget?' em '+target:''}${damage?' • '+damage:''}`,{kind:'attack',target:selectedCombatTarget,detail:damage}); alert('Ação enviada. O mestre continua responsável por confirmar dano, testes e efeitos.');
+};
+window.useQuickSkill=async function(element,name){
+  let skill=null;for(const path of SKILLS[element]?.paths||[]){skill=path.skills.find(s=>s.name===name);if(skill)break;}if(!skill)return;
+  const me=combatPlayersCache.find(p=>String(p.user_id)===String(currentUser?.id));const target=targetLabel();
+  const result=prompt(`${skill.name}\n${skill.effect||skill.desc||''}\n\nAlvo: ${target}\nInforme dano/resultado (opcional):`,'');if(result===null)return;
+  await submitCombatAction(`${me?.name||'Personagem'} usou ${skill.name}${selectedCombatTarget?' em '+target:''}${result?' • '+result:''}`,{kind:'skill',skill:skill.name,target:selectedCombatTarget,detail:result});
+  if(currentRole==='admin'&&selectedCombatTarget&&confirm('Deseja aplicar uma condição/efeito ao alvo?'))await addBattleEffect(selectedCombatTarget.type,selectedCombatTarget.id);
+};
+
+window.openEnemyDetails=function(id){
+  const e=battleEnemies.find(x=>String(x.id)===String(id));if(!e)return; const can=k=>enemyVisible(e,k); const effects=effectsFor('enemy',id);
+  document.body.insertAdjacentHTML('beforeend',`<div id="enemy-detail-modal" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('enemy-detail-modal').remove()"></button><div class="picker-panel enemy-detail-sheet"><div class="picker-head"><div><span class="section-eyebrow">FICHA DE INIMIGO</span><h3>${can('name')?escapeHtml(e.name):'Inimigo desconhecido'}</h3><small>${escapeHtml([e.rank,e.element,e.level?'Nv. '+e.level:'',e.subtitle].filter(Boolean).join(' • '))}</small></div><button onclick="document.getElementById('enemy-detail-modal').remove()">✕</button></div><div class="enemy-detail-stats">${can('hp')?`<span>PV <b>${can('hp_numbers')?`${e.hp_current}/${e.hp_max}`:'Oculto'}</b></span>`:''}${can('defense')?`<span>DEF <b>${e.defense}</b></span>`:''}${can('dodge')?`<span>ESQ <b>${e.dodge}</b></span>`:''}${can('block')?`<span>BLOQ <b>${e.block}</b></span>`:''}${can('movement')?`<span>DESL <b>${e.movement_speed}m</b></span>`:''}${currentRole==='admin'?`<span>RD <b>${e.damage_reduction||0}</b></span>`:''}</div>${effects.length?`<h4>Condições</h4>${renderTimedEffects('enemy',id)}`:''}${can('attacks')&&e.attacks?.length?`<h4>Ataques</h4><div class="detail-list">${e.attacks.map(x=>`<div>${escapeHtml(typeof x==='string'?x:(x.name||JSON.stringify(x)))}</div>`).join('')}</div>`:''}${can('abilities')&&e.abilities?.length?`<h4>Habilidades</h4><div class="detail-list">${e.abilities.map(x=>`<div>${escapeHtml(typeof x==='string'?x:(x.name||JSON.stringify(x)))}</div>`).join('')}</div>`:''}${currentRole==='admin'&&e.notes?`<h4>Notas privadas</h4><p>${escapeHtml(e.notes)}</p>`:''}</div></div>`);
+};
+window.duplicateBattleEnemy=async function(id,count=1){
+  if(currentRole!=='admin')return;const e=battleEnemies.find(x=>String(x.id)===String(id));if(!e)return; const copies=[];
+  for(let i=0;i<count;i++)copies.push({battle_id:activeBattle.id,name:e.name,subtitle:e.subtitle,image_url:e.image_url,hp_current:e.hp_max,hp_max:e.hp_max,defense:e.defense,dodge:e.dodge,block:e.block,movement_speed:e.movement_speed,level:e.level||1,rank:e.rank||'comum',element:e.element||'',damage_reduction:e.damage_reduction||0,conditions:e.conditions||[],attacks:e.attacks||[],abilities:e.abilities||[],notes:e.notes||'',visibility:e.visibility||{}});
+  const {error}=await supabaseClient.from('battle_enemies').insert(copies);if(error)return alert(error.message);await logBattle(`${e.name} duplicado ×${count}`,'enemy');scheduleCombatSync(40);
+};
+
+function renderCombatHistory(){
+  if(currentRole!=='admin')return '';
+  return `<section class="combat-history">${battleActionRequestsCache.length?`<div class="pending-actions"><span class="section-eyebrow">AÇÕES PARA CONFIRMAR</span>${battleActionRequestsCache.map(r=>`<div><span>${escapeHtml(r.message)}</span><button onclick="resolveCombatAction('${r.id}',true)">Confirmar</button><button onclick="resolveCombatAction('${r.id}',false)">Ignorar</button></div>`).join('')}</div>`:''}<div class="combat-section-head"><div><span class="section-eyebrow">HISTÓRICO</span><h3>Últimos acontecimentos</h3></div></div><div class="combat-log-list">${battleLogPublicCache.slice(0,12).map(l=>`<div><time>${new Date(l.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</time><span>${escapeHtml(l.message)}</span></div>`).join('')||'<small>Nenhum evento registrado.</small>'}</div></section>`;
+}
+
+// Guarda as implementações anteriores para reaproveitar a sincronização leve.
+const _fetchCombatStateSuite=fetchCombatState;
+fetchCombatState=async function(){const state=await _fetchCombatStateSuite();if(!state.error){activeBattle=state.battle;await loadCombatExtras();}return state;};
+const _syncCombatIncrementallySuite=syncCombatIncrementally;
+syncCombatIncrementally=async function(){await loadCombatExtras();await _syncCombatIncrementallySuite();const main=document.getElementById('main-content');if(currentTab==='combate'&&main){const oldQ=main.querySelector('.combat-quick-panel');const oldH=main.querySelector('.combat-history');if(oldQ){const h=document.createElement('div');h.innerHTML=renderCombatQuickActions();oldQ.replaceWith(h.firstElementChild);}if(oldH){const h=document.createElement('div');h.innerHTML=renderCombatHistory();oldH.replaceWith(h.firstElementChild);}}};
+
+// Substitui somente a composição visual do combate; os dados/realtime continuam os mesmos.
+renderBattlePlayerCard=function(pl){
+  const hpMax=pl.hp_max||1,hp=Math.max(0,Math.min(100,Math.round((pl.hp_current||0)/hpMax*100))),pdMax=pl.energy_max||1,pd=Math.max(0,Math.min(100,Math.round((pl.energy_current||0)/pdMax*100))),down=(pl.hp_current||0)<=0;
+  return `<article class="battle-card ally-card ${down?'combat-down':''} ${selectedCombatTarget?.type==='player'&&String(selectedCombatTarget.id)===String(pl.user_id)?'targeted':''}" data-player-id="${escapeHtml(pl.user_id||'')}" onclick="selectCombatTarget('player','${escapeAttr(pl.user_id)}')"><div class="battle-card-head"><div class="battle-avatar">${pl.avatar_url?`<img src="${escapeAttr(pl.avatar_url)}">`:escapeHtml((pl.name||'?')[0])}</div><div><strong>${escapeHtml(pl.name||'Sem nome')}</strong><small>${escapeHtml([pl.class_name,pl.archetype].filter(Boolean).join(' • '))}</small></div><b>${down?'💀 0 PV':'NV '+(pl.level||1)}</b></div><div class="battle-resource"><span>PV</span><div><i style="width:${hp}%"></i></div><b>${pl.hp_current||0}/${pl.hp_max||0}</b></div><div class="battle-resource pd"><span>PD</span><div><i style="width:${pd}%"></i></div><b>${pl.energy_current||0}/${pl.energy_max||0}</b></div><div class="battle-stats"><span>DEF <b>${pl.defense??10}</b></span><span>ESQ <b>${pl.dodge??0}</b></span><span>BLOQ <b>${pl.block??0}</b></span><span>DESL <b>${pl.movement_speed??9}m</b></span></div>${renderTimedEffects('player',pl.user_id)}${currentRole==='admin'?`<div class="combat-card-tools" onclick="event.stopPropagation()">${quickButtons(`quickAdjustPlayer.bind(null,'${escapeAttr(pl.user_id)}','hp')`)}<button onclick="addBattleEffect('player','${escapeAttr(pl.user_id)}')">+ Condição</button><button onclick="selectCharacterFromPicker('${escapeAttr(pl.user_id)}');setTimeout(()=>switchTab('personagem'),100)">Ficha →</button></div>`:''}</article>`;
+};
+renderEnemyCard=function(e){
+  const max=e.hp_max||1,pct=Math.max(0,Math.min(100,Math.round((e.hp_current||0)/max*100))),down=(e.hp_current||0)<=0,can=k=>enemyVisible(e,k);
+  return `<article class="battle-card enemy-card ${down?'combat-down':''} ${selectedCombatTarget?.type==='enemy'&&String(selectedCombatTarget.id)===String(e.id)?'targeted':''}" data-enemy-id="${escapeHtml(e.id||'')}" onclick="selectCombatTarget('enemy','${escapeAttr(e.id)}')"><div class="battle-card-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${escapeAttr(e.image_url)}">`:'👹'}</div><div><strong>${can('name')?escapeHtml(e.name||'Inimigo'):'Inimigo desconhecido'}</strong><small>${escapeHtml(e.subtitle||'')}</small></div>${down?'<b>💀 0 PV</b>':''}</div>${can('hp')?`<div class="battle-resource enemy-hp"><span>PV</span><div><i style="width:${pct}%"></i></div><b>${can('hp_numbers')?`${e.hp_current||0}/${e.hp_max||0}`:'?'}</b></div>`:''}<div class="battle-stats">${can('defense')?`<span>DEF <b>${e.defense??10}</b></span>`:''}${can('dodge')?`<span>ESQ <b>${e.dodge??0}</b></span>`:''}${can('block')?`<span>BLOQ <b>${e.block??0}</b></span>`:''}${can('movement')?`<span>DESL <b>${e.movement_speed??9}m</b></span>`:''}</div>${renderTimedEffects('enemy',e.id)}<div class="combat-card-tools" onclick="event.stopPropagation()"><button onclick="openEnemyDetails('${e.id}')">Ver detalhes</button>${currentRole==='admin'?`${quickButtons(`quickAdjustEnemy.bind(null,'${escapeAttr(e.id)}')`)}<button onclick="addBattleEffect('enemy','${e.id}')">+ Condição</button><button onclick="openEnemyEditor('${e.id}')">Editar</button><button onclick="duplicateBattleEnemy('${e.id}',1)">Duplicar ×1</button><button onclick="duplicateBattleEnemy('${e.id}',3)">×3</button>`:''}</div></article>`;
+};
+renderCombat=function(players){
+  if(!activeBattle)return `<section class="combat-shell"><div class="combat-empty"><span>⚔️</span><h2>Nenhum combate ativo</h2><p>Quando o mestre iniciar uma batalha, jogadores e inimigos aparecerão aqui em tempo real.</p>${currentRole==='admin'?'<button class="primary-action" onclick="startBattle()">+ Iniciar combate</button>':''}</div></section>`;
+  const allies=players.map(renderBattlePlayerCard).join('')||'<p class="combat-placeholder">Nenhum personagem.</p>', enemies=battleEnemies.map(renderEnemyCard).join('')||'<p class="combat-placeholder">Nenhum inimigo.</p>';
+  return `<section class="combat-shell"><header class="combat-head"><div><span class="section-eyebrow">BATALHA AO VIVO</span><h2 data-combat-title>⚔️ ${escapeHtml(activeBattle.name||'Combate')}</h2><p data-combat-meta>Rodada ${activeBattle.round||1}${activeBattle.turn_label?' • Turno: '+escapeHtml(activeBattle.turn_label):''}</p></div>${currentRole==='admin'?`<div class="combat-admin-actions"><button onclick="advanceRound()">+ Rodada</button><button class="danger-action" onclick="endBattle()">Encerrar</button></div>`:''}</header>${renderCombatInitiative()}${renderCombatQuickActions()}<div class="combat-section-head"><h3>Aliados</h3><span data-ally-count>${players.length} personagens</span></div><div class="battle-allies">${allies}</div><div class="combat-section-head"><h3>Inimigos</h3>${currentRole==='admin'?`<div class="combat-enemy-actions"><button onclick="openBattleBestiaryPicker()">📚 Do bestiário</button><button onclick="openEnemyEditor()">+ Criar manualmente</button></div>`:''}</div><div class="battle-enemies">${enemies}</div>${renderCombatHistory()}</section>`;
+};
+
+// Rodada também reduz efeitos temporários.
+const _advanceRoundSuite=advanceRound;
+advanceRound=async function(){await tickBattleEffects();await _advanceRoundSuite();await logBattle(`Rodada ${(activeBattle?.round||1)+1} iniciada`,'round');scheduleCombatSync(40);};
+window.advanceRound=advanceRound;
+
+// Bestiário: filtros, categoria/elemento/nível e encontros.
+let bestiaryFilter={q:'',rank:'all',element:'all'};
+function filterBestiaryList(){document.querySelectorAll('.bestiary-card[data-search]').forEach(card=>{const q=bestiaryFilter.q.toLowerCase();card.hidden=!!((q&&!card.dataset.search.includes(q))||(bestiaryFilter.rank!=='all'&&card.dataset.rank!==bestiaryFilter.rank)||(bestiaryFilter.element!=='all'&&card.dataset.element!==bestiaryFilter.element));});}
+window.setBestiaryFilter=function(kind,value){bestiaryFilter[kind]=value;document.querySelectorAll(`[data-filter-kind="${kind}"]`).forEach(b=>b.classList.toggle('active',b.dataset.filterValue===value));filterBestiaryList();};
+window.searchBestiary=function(v){bestiaryFilter.q=v||'';filterBestiaryList();};
+const _renderMasterBestiaryBase=renderMasterBestiary;
+renderMasterBestiary=function(){
+  const cards=masterBestiaryCache.map(e=>`<article class="bestiary-card" data-search="${escapeAttr([e.name,e.subtitle,e.rank,e.element].filter(Boolean).join(' ').toLowerCase())}" data-rank="${escapeAttr(e.rank||'comum')}" data-element="${escapeAttr(e.element||'nenhum')}"><div class="bestiary-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${escapeAttr(e.image_url)}">`:'👹'}</div><div><strong>${escapeHtml(e.name)}</strong><small>${escapeHtml((e.rank||'Comum').toUpperCase())} • ${escapeHtml((e.element||'Sem elemento').toUpperCase())} • Nv. ${e.level||1}</small></div></div><div class="bestiary-stats"><span>PV <b>${e.hp_max}</b></span><span>DEF <b>${e.defense??10}</b></span><span>ESQ <b>${e.dodge??0}</b></span><span>DESL <b>${e.movement_speed??9}m</b></span></div><div class="bestiary-actions"><button onclick="addTemplateToBattle('${e.id}')">+ Combate</button><button onclick="openBestiaryEditor('${e.id}')">Editar</button><button onclick="duplicateBestiary('${e.id}')">Duplicar</button></div></article>`).join('');
+  return `<section class="master-section"><div class="master-panel-head"><div><span class="section-eyebrow">BESTIÁRIO</span><h3>Biblioteca de inimigos</h3></div><button class="primary-action" onclick="openBestiaryEditor()">+ Novo inimigo</button></div><div class="bestiary-toolbar"><input placeholder="🔎 Pesquisar..." oninput="searchBestiary(this.value)"><div class="filter-row">${['all','comum','elite','chefe'].map(x=>`<button data-filter-kind="rank" data-filter-value="${x}" onclick="setBestiaryFilter('rank','${x}')">${x==='all'?'Todos':x}</button>`).join('')}</div><div class="filter-row">${['all','frio','fogo','agua','terra','vento','energia','vazio'].map(x=>`<button data-filter-kind="element" data-filter-value="${x}" onclick="setBestiaryFilter('element','${x}')">${x==='all'?'Elementos':x}</button>`).join('')}</div></div><div class="bestiary-grid">${cards||'<div class="combat-empty"><h3>Bestiário vazio</h3></div>'}</div>${renderEncounterTemplates()}</section>`;
+};
+const _openBestiaryEditorBase=window.openBestiaryEditor;
+window.openBestiaryEditor=function(id){_openBestiaryEditorBase(id);const form=document.querySelector('#bestiary-editor form');if(!form)return;const e=masterBestiaryCache.find(x=>x.id===id)||{};const grid=form.querySelector('.enemy-form-grid');if(grid)grid.insertAdjacentHTML('afterbegin',`<label>Nível<input name="level" type="number" min="1" value="${e.level||1}"></label><label>Categoria<select name="rank"><option value="comum" ${e.rank==='comum'?'selected':''}>Comum</option><option value="elite" ${e.rank==='elite'?'selected':''}>Elite</option><option value="chefe" ${e.rank==='chefe'?'selected':''}>Chefe</option></select></label><label>Elemento<input name="element" value="${escapeAttr(e.element||'')}"></label><label>RD<input name="damage_reduction" type="number" value="${e.damage_reduction||0}"></label>`);};
+const _saveBestiaryBase=window.saveBestiary;
+window.saveBestiary=async function(ev,id){
+  ev.preventDefault();const f=new FormData(ev.target),visibility={};['name','hp','hp_numbers','conditions','defense','dodge','block','movement'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on');const lines=n=>String(f.get(n)||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const payload={owner_id:currentUser.id,name:f.get('name')||'Inimigo',subtitle:f.get('subtitle')||'',image_url:f.get('image_url')||'',level:+f.get('level')||1,rank:f.get('rank')||'comum',element:f.get('element')||'',damage_reduction:+f.get('damage_reduction')||0,hp_max:+f.get('hp_max')||1,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),attacks:lines('attacks'),abilities:lines('abilities'),notes:f.get('notes')||'',visibility};
+  const q=id?supabaseClient.from('enemy_templates').update(payload).eq('id',id):supabaseClient.from('enemy_templates').insert(payload);const {error}=await q;if(error){alert('Erro ao salvar. Execute o SQL atualizado.\n'+error.message);return;}document.getElementById('bestiary-editor')?.remove();await loadMasterHub('bestiary');
+};
+
+let encounterTemplatesCache=[];
+async function loadEncounterTemplates(){if(currentRole!=='admin')return;const {data}=await supabaseClient.from('encounter_templates').select('*').order('name');encounterTemplatesCache=data||[];}
+function renderEncounterTemplates(){loadEncounterTemplates().then(()=>{if(currentTab==='mestre'&&masterHubSection==='bestiary'){const box=document.querySelector('[data-encounters]');if(box)box.innerHTML=encounterTemplatesHtml();}});return `<div class="encounter-section" data-encounters>${encounterTemplatesHtml()}</div>`;}
+function encounterTemplatesHtml(){return `<div class="master-panel-head"><div><span class="section-eyebrow">ENCONTROS SALVOS</span><h3>Modelos de encontro</h3></div><button onclick="createEncounterTemplate()">+ Salvar encontro atual</button></div><div class="encounter-grid">${encounterTemplatesCache.map(e=>`<article><strong>${escapeHtml(e.name)}</strong><small>${(e.members||[]).reduce((n,x)=>n+(x.quantity||1),0)} inimigos</small><button onclick="startEncounterTemplate('${e.id}')">Iniciar encontro</button><button onclick="deleteEncounterTemplate('${e.id}')">Excluir</button></article>`).join('')||'<small>Nenhum encontro salvo.</small>'}</div>`;}
+window.createEncounterTemplate=async function(){const name=prompt('Nome do encontro:');if(!name)return;const members=masterBestiaryCache.filter(e=>confirm(`Incluir ${e.name}?`)).map(e=>({template_id:e.id,quantity:Math.max(1,parseInt(prompt(`Quantidade de ${e.name}:`,'1'))||1)}));if(!members.length)return;const {error}=await supabaseClient.from('encounter_templates').insert({owner_id:currentUser.id,name,members});if(error)alert(error.message);else{await loadEncounterTemplates();loadMasterHub('bestiary');}};
+window.startEncounterTemplate=async function(id){const enc=encounterTemplatesCache.find(x=>x.id===id);if(!enc)return;if(!activeBattle){alert('Inicie um combate primeiro.');return;}for(const m of enc.members||[]){for(let i=0;i<(m.quantity||1);i++)await addTemplateToBattle(m.template_id);}await logBattle(`Encontro “${enc.name}” adicionado`,'encounter');scheduleCombatSync(50);};
+window.deleteEncounterTemplate=async function(id){if(!confirm('Excluir encontro salvo?'))return;await supabaseClient.from('encounter_templates').delete().eq('id',id);await loadEncounterTemplates();loadMasterHub('bestiary');};
+
+// Modo de sessão — cronômetro e resumo persistente.
+window.startGameSession=async function(){if(currentRole!=='admin')return;const title=prompt('Nome da sessão:','Nova sessão');if(!title)return;await supabaseClient.from('game_sessions').update({active:false,ended_at:new Date().toISOString()}).eq('active',true);const {data,error}=await supabaseClient.from('game_sessions').insert({owner_id:currentUser.id,title,active:true}).select().single();if(error)return alert(error.message);activeGameSession=data;loadMasterHub('session');};
+window.endGameSession=async function(){if(!activeGameSession)return;const notes=prompt('Resumo/notas finais da sessão:',activeGameSession.notes||'')??activeGameSession.notes;await supabaseClient.from('game_sessions').update({active:false,ended_at:new Date().toISOString(),notes}).eq('id',activeGameSession.id);activeGameSession=null;loadMasterHub('session');};
+function sessionElapsed(){if(!activeGameSession)return '';const ms=Date.now()-new Date(activeGameSession.started_at).getTime();const h=Math.floor(ms/3600000),m=Math.floor(ms%3600000/60000),s=Math.floor(ms%60000/1000);return [h,m,s].map(x=>String(x).padStart(2,'0')).join(':');}
+const _renderMasterSessionBase=renderMasterSession;
+renderMasterSession=function(){const base=_renderMasterSessionBase();return `<section class="session-mode-card"><div><span class="section-eyebrow">MODO DE SESSÃO</span><h2>${activeGameSession?'🎲 '+escapeHtml(activeGameSession.title):'Nenhuma sessão iniciada'}</h2><p>${activeGameSession?'Duração: <b data-session-clock>'+sessionElapsed()+'</b>':'Registre a sessão e mantenha notas/resumo.'}</p></div>${activeGameSession?'<button class="danger-action" onclick="endGameSession()">Finalizar sessão</button>':'<button class="primary-action" onclick="startGameSession()">▶ Iniciar sessão</button>'}</section>${base}`;};
+setInterval(()=>{const el=document.querySelector('[data-session-clock]');if(el&&activeGameSession)el.textContent=sessionElapsed();},1000);
 
 async function login() {
   const email = document.getElementById('email').value.trim();

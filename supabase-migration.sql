@@ -419,3 +419,113 @@ LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$
   WHERE e.battle_id=p_battle_id ORDER BY e.sort_order,e.created_at;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_battle_enemies(uuid) TO authenticated;
+
+
+-- ============================================================
+-- COMBAT SUITE 2.0
+-- Execute este bloco depois da migracao anterior.
+-- ============================================================
+ALTER TABLE public.enemy_templates
+  ADD COLUMN IF NOT EXISTS level integer NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS rank text NOT NULL DEFAULT 'comum',
+  ADD COLUMN IF NOT EXISTS element text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS damage_reduction integer NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS public.battle_effects (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL REFERENCES public.battles(id) ON DELETE CASCADE,
+  entity_type text NOT NULL CHECK (entity_type IN ('player','enemy')),
+  entity_id text NOT NULL,
+  name text NOT NULL,
+  rounds_remaining integer NOT NULL DEFAULT 0,
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.battle_effects ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "authenticated read battle effects" ON public.battle_effects;
+CREATE POLICY "authenticated read battle effects" ON public.battle_effects FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "admin manage battle effects" ON public.battle_effects;
+CREATE POLICY "admin manage battle effects" ON public.battle_effects FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+
+CREATE TABLE IF NOT EXISTS public.encounter_templates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name text NOT NULL, members jsonb NOT NULL DEFAULT '[]'::jsonb, created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.encounter_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin own encounters" ON public.encounter_templates;
+CREATE POLICY "admin own encounters" ON public.encounter_templates FOR ALL TO authenticated
+USING (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'))
+WITH CHECK (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+
+CREATE TABLE IF NOT EXISTS public.game_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(), owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title text NOT NULL, active boolean NOT NULL DEFAULT true, notes text NOT NULL DEFAULT '',
+  started_at timestamptz NOT NULL DEFAULT now(), ended_at timestamptz
+);
+ALTER TABLE public.game_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin own sessions" ON public.game_sessions;
+CREATE POLICY "admin own sessions" ON public.game_sessions FOR ALL TO authenticated
+USING (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'))
+WITH CHECK (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+
+DO $$ BEGIN
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.battle_effects; EXCEPTION WHEN duplicate_object THEN NULL; END;
+END $$;
+
+CREATE TABLE IF NOT EXISTS public.battle_action_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL REFERENCES public.battles(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  message text NOT NULL,
+  payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  resolved_by uuid REFERENCES auth.users(id), resolved_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.battle_action_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "players create own combat actions" ON public.battle_action_requests;
+CREATE POLICY "players create own combat actions" ON public.battle_action_requests FOR INSERT TO authenticated WITH CHECK (user_id=auth.uid());
+DROP POLICY IF EXISTS "players read own combat actions" ON public.battle_action_requests;
+CREATE POLICY "players read own combat actions" ON public.battle_action_requests FOR SELECT TO authenticated USING (user_id=auth.uid() OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+DROP POLICY IF EXISTS "admin resolve combat actions" ON public.battle_action_requests;
+CREATE POLICY "admin resolve combat actions" ON public.battle_action_requests FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin')) WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+DO $$ BEGIN BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.battle_action_requests; EXCEPTION WHEN duplicate_object THEN NULL; END; END $$;
+
+
+ALTER TABLE public.battle_enemies
+  ADD COLUMN IF NOT EXISTS level integer NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS rank text NOT NULL DEFAULT 'comum',
+  ADD COLUMN IF NOT EXISTS element text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS damage_reduction integer NOT NULL DEFAULT 0;
+
+DROP FUNCTION IF EXISTS public.get_battle_enemies_v2(uuid);
+CREATE FUNCTION public.get_battle_enemies_v2(p_battle_id uuid)
+RETURNS TABLE (
+  id uuid,battle_id uuid,name text,subtitle text,image_url text,hp_current integer,hp_max integer,
+  defense integer,dodge integer,block integer,movement_speed numeric,conditions jsonb,visibility jsonb,sort_order integer,
+  attacks jsonb,abilities jsonb,notes text,level integer,rank text,element text,damage_reduction integer
+)
+LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$
+WITH me AS (SELECT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin') AS is_admin)
+SELECT e.id,e.battle_id,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.name ELSE 'Inimigo desconhecido' END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.subtitle ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.image_url ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'hp_numbers')::boolean,false) THEN e.hp_current WHEN COALESCE((e.visibility->>'hp')::boolean,true) THEN ROUND(100.0*e.hp_current/GREATEST(e.hp_max,1))::integer ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'hp_numbers')::boolean,false) THEN e.hp_max WHEN COALESCE((e.visibility->>'hp')::boolean,true) THEN 100 ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'defense')::boolean,false) THEN e.defense ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'dodge')::boolean,false) THEN e.dodge ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'block')::boolean,false) THEN e.block ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'movement')::boolean,true) THEN e.movement_speed ELSE NULL END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'conditions')::boolean,true) THEN e.conditions ELSE '[]'::jsonb END,
+ CASE WHEN me.is_admin THEN e.visibility ELSE jsonb_build_object('name',COALESCE((e.visibility->>'name')::boolean,true),'hp',COALESCE((e.visibility->>'hp')::boolean,true),'hp_numbers',COALESCE((e.visibility->>'hp_numbers')::boolean,false),'conditions',COALESCE((e.visibility->>'conditions')::boolean,true),'defense',COALESCE((e.visibility->>'defense')::boolean,false),'dodge',COALESCE((e.visibility->>'dodge')::boolean,false),'block',COALESCE((e.visibility->>'block')::boolean,false),'movement',COALESCE((e.visibility->>'movement')::boolean,true),'attacks',COALESCE((e.visibility->>'attacks')::boolean,false),'abilities',COALESCE((e.visibility->>'abilities')::boolean,false)) END,
+ e.sort_order,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'attacks')::boolean,false) THEN e.attacks ELSE '[]'::jsonb END,
+ CASE WHEN me.is_admin OR COALESCE((e.visibility->>'abilities')::boolean,false) THEN e.abilities ELSE '[]'::jsonb END,
+ CASE WHEN me.is_admin THEN e.notes ELSE NULL END,
+ e.level,e.rank,e.element,CASE WHEN me.is_admin THEN e.damage_reduction ELSE 0 END
+FROM public.battle_enemies e CROSS JOIN me WHERE e.battle_id=p_battle_id ORDER BY e.sort_order,e.created_at;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_battle_enemies_v2(uuid) TO authenticated;
