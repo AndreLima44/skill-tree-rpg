@@ -289,6 +289,13 @@ let realtimeChannel = null;
 let isApplyingRemoteUpdate = false;
 const AUTOSAVE_DELAY_MS = 1200;
 
+// --- Cache de performance para regras ---
+let ruleTermsCache = null;
+let ruleTermsCacheExpiry = 0;
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos
+let linkifyCache = new Map();
+const LINKIFY_CACHE_MAX = 200;
+
 function setSaveStatus(status) {
   // status: 'loading' | 'saved' | 'dirty' | 'saving' | 'error'
   const el = document.getElementById('save-status');
@@ -563,10 +570,17 @@ function findRuleForSkill(skillName) {
 }
 function getRuleTerms() {
   const book=getRuleBook(); if(!book) return [];
-  return book.getAll().flatMap(r=>[r.title,...(r.aliases||[])]).filter(Boolean).sort((a,b)=>b.length-a.length);
+  const now=Date.now();
+  if(ruleTermsCache && now<ruleTermsCacheExpiry) return ruleTermsCache;
+  ruleTermsCache=book.getAll().flatMap(r=>[r.title,...(r.aliases||[])]).filter(Boolean).sort((a,b)=>b.length-a.length);
+  ruleTermsCacheExpiry=now+CACHE_DURATION_MS;
+  return ruleTermsCache;
 }
 function escapeAttr(v=''){ return escapeHtml(v).replace(/`/g,'&#096;'); }
 function linkifyRules(text='') {
+  if(!text) return '';
+  const cacheKey=text.substring(0,100);
+  if(linkifyCache.has(cacheKey)) return linkifyCache.get(cacheKey);
   let out=escapeHtml(text); const book=getRuleBook(); if(!book) return out;
   for(const term of getRuleTerms()) {
     const results=book.search(term,{limit:3})||[];
@@ -575,14 +589,34 @@ function linkifyRules(text='') {
     const safe=String(term).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     out=out.replace(new RegExp(`(^|[^\\wÀ-ÿ])(${safe})(?=$|[^\\wÀ-ÿ])`,'gi'),(m,p,t)=>`${p}<button class="rule-term" type="button" data-rule-id="${exact.id}">${t}</button>`);
   }
+  if(linkifyCache.size>=LINKIFY_CACHE_MAX) linkifyCache.delete(linkifyCache.keys().next().value);
+  linkifyCache.set(cacheKey,out);
   return out;
 }
 let ruleHistory=[];
 let rulesSearchTimer=null;
-function ruleCategoryLabel(category){ return getRuleBook()?.categories?.[category] || category || 'Regra'; }
+function ruleCategoryLabel(category){
+ const book=getRuleBook();
+ if(!book) return category || 'Regra';
+ return book.categories?.[category] || category || 'Regra';
+}
 function renderRulesPage(){
  const book=getRuleBook();
- if(!book) return `<section class="rulebook-shell"><p class="rules-empty">Carregando Livro de Regras...</p></section>`;
+ if(!book) {
+  // Se o RuleBook ainda não está carregado, aguarda o evento
+  if(!window.rulebookReadyListener) {
+   window.rulebookReadyListener = true;
+   window.addEventListener('rulebook-ready', () => {
+    if(currentTab === 'regras') {
+     const mainContent = document.getElementById('main-content');
+     if(mainContent) mainContent.innerHTML = renderRulesPage();
+     renderRulesContext();
+     searchRules('');
+    }
+   });
+  }
+  return `<section class="rulebook-shell"><p class="rules-empty">Carregando Livro de Regras...</p></section>`;
+ }
  const categories=Object.entries(book.categories||{});
  const popular=['pr','rd','ressonancia','esquiva','congelado','imobilizado','vanguarda','combo'];
  return `<section class="rulebook-shell">
@@ -593,30 +627,54 @@ function renderRulesPage(){
    <div id="rules-results" class="rules-results"><p class="rules-empty">Pesquise um termo ou escolha uma categoria.</p></div>
  </section>`;
 }
-function scheduleRuleSearch(query){ clearTimeout(rulesSearchTimer); rulesSearchTimer=setTimeout(()=>searchRules(query),180); }
+function scheduleRuleSearch(query){ clearTimeout(rulesSearchTimer); rulesSearchTimer=setTimeout(()=>searchRules(query),300); }
 function searchRules(query='',options={}){
  const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
  const q=String(query).trim(); if(!q){box.innerHTML='<p class="rules-empty">Digite uma regra para pesquisar.</p>';return;}
- const results=book.search(q,{...options,limit:30})||[];
- box.innerHTML=results.length?results.map(({rule})=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p><div class="rule-card-related">${book.getRelated(rule.id).slice(0,4).map(r=>`<span>${escapeHtml(r.title)}</span>`).join('')}</div>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join(''):'<p class="rules-empty">Nenhuma regra encontrada.</p>';
+ // Otimização: renderiza loading primeiro, depois faz a busca
+ box.innerHTML='<p class="rules-empty">Pesquisando...</p>';
+ setTimeout(()=>{
+  const results=book.search(q,{...options,limit:30})||[];
+  box.innerHTML=results.length?results.map(({rule})=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p><div class="rule-card-related">${book.getRelated(rule.id).slice(0,4).map(r=>`<span>${escapeHtml(r.title)}</span>`).join('')}</div>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join(''):'<p class="rules-empty">Nenhuma regra encontrada.</p>';
+ },0);
 }
 function filterRulesCategory(category){
- const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
- const rules=book.getByCategory(category)||[];
- box.innerHTML=rules.map(rule=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join('')||'<p class="rules-empty">Nenhuma regra nesta categoria.</p>';
+ const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book){
+  box.innerHTML='<p class="rules-empty">Carregando Livro de Regras...</p>';
+  return;
+ }
+ // Otimização: renderiza loading primeiro, depois faz a busca
+ box.innerHTML='<p class="rules-empty">Carregando regras...</p>';
+ setTimeout(()=>{
+  const rules=book.getByCategory(category)||[];
+  box.innerHTML=rules.map(rule=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join('')||'<p class="rules-empty">Nenhuma regra nesta categoria.</p>';
+ },0);
 }
 function openRuleById(id,push=true){
- const rule=getRule(id); if(!rule)return;
+ const rule=getRule(id); if(!rule){
+  const main=document.getElementById('main-content');
+  if(main) main.innerHTML='<p class="opacity-60 text-center p-8">Livro de Regras ainda não carregado. Tente novamente em instantes.</p>';
+  return;
+ }
  if(push) ruleHistory.push(id);
  const main=document.getElementById('main-content'); if(!main)return;
- const book=getRuleBook(), related=book.getRelated(id)||[];
- const section=(title,content)=>content&&content.length?`<section class="rule-section"><h3>${title}</h3>${content}</section>`:'';
- // linkifyRules() já escapa o texto original e gera apenas os botões seguros
- // dos termos registrados. Portanto, não devemos escapar novamente aqui.
- const list=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
- const meta=[['Elemento',rule.element],['Grau',rule.grade],['Tipo',rule.type],['Ação',rule.action],['Alcance',rule.range],['Duração',rule.duration],['Pré-requisito',rule.prerequisite]].filter(x=>x[1]);
- main.innerHTML=`<section class="rule-detail"><div class="rule-breadcrumb"><button onclick="backFromRule()">← Voltar</button><span>Livro de Regras › ${escapeHtml(ruleCategoryLabel(rule.category))} › ${escapeHtml(rule.title)}</span></div><div class="rule-detail-head"><div><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><h1>${escapeHtml(rule.title)}</h1><p>${escapeHtml(rule.summary||'')}</p></div>${rule.status==='needs-review'?'<div class="rule-status-review">⚠ Regra pendente de revisão</div>':''}</div>${meta.length?`<div class="rule-meta">${meta.map(([k,v])=>`<span><b>${k}:</b> ${escapeHtml(v)}</span>`).join('')}</div>`:''}${section('Como funciona',rule.description&&`<p>${linkifyRules(rule.description)}</p>`)}${section('Mecânica',rule.mechanics?.length?list(rule.mechanics.map(linkifyRules)): '')}${section('Exemplos',rule.examples?.length?list(rule.examples.map(linkifyRules)):'')}${section('Tags',rule.tags?.length?`<div class="rule-tags">${rule.tags.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>`:'')}${related.length?`<section class="rule-section"><h3>Relacionado</h3><div class="rule-related-list">${related.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div></section>`:''}${rule.note?`<section class="rule-section rule-review-note"><h3>Observação</h3><p>${escapeHtml(rule.note)}</p></section>`:''}</section>`;
- window.scrollTo({top:0,behavior:'smooth'});
+ // Otimização: mostra loading primeiro
+ main.innerHTML='<p class="opacity-60 text-center p-8">Carregando regra...</p>';
+ setTimeout(()=>{
+  const book=getRuleBook();
+  if(!book){
+   main.innerHTML='<p class="opacity-60 text-center p-8">Livro de Regras ainda não carregado. Tente novamente em instantes.</p>';
+   return;
+  }
+  const related=book.getRelated(id)||[];
+  const section=(title,content)=>content&&content.length?`<section class="rule-section"><h3>${title}</h3>${content}</section>`:'';
+  // linkifyRules() já escapa o texto original e gera apenas os botões seguros
+  // dos termos registrados. Portanto, não devemos escapar novamente aqui.
+  const list=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  const meta=[['Elemento',rule.element],['Grau',rule.grade],['Tipo',rule.type],['Ação',rule.action],['Alcance',rule.range],['Duração',rule.duration],['Pré-requisito',rule.prerequisite]].filter(x=>x[1]);
+  main.innerHTML=`<section class="rule-detail"><div class="rule-breadcrumb"><button onclick="backFromRule()">← Voltar</button><span>Livro de Regras › ${escapeHtml(ruleCategoryLabel(rule.category))} › ${escapeHtml(rule.title)}</span></div><div class="rule-detail-head"><div><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><h1>${escapeHtml(rule.title)}</h1><p>${escapeHtml(rule.summary||'')}</p></div>${rule.status==='needs-review'?'<div class="rule-status-review">⚠ Regra pendente de revisão</div>':''}</div>${meta.length?`<div class="rule-meta">${meta.map(([k,v])=>`<span><b>${k}:</b> ${escapeHtml(v)}</span>`).join('')}</div>`:''}${section('Como funciona',rule.description&&`<p>${linkifyRules(rule.description)}</p>`)}${section('Mecânica',rule.mechanics?.length?list(rule.mechanics.map(linkifyRules)): '')}${section('Exemplos',rule.examples?.length?list(rule.examples.map(linkifyRules)):'')}${section('Tags',rule.tags?.length?`<div class="rule-tags">${rule.tags.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>`:'')}${related.length?`<section class="rule-section"><h3>Relacionado</h3><div class="rule-related-list">${related.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div></section>`:''}${rule.note?`<section class="rule-section rule-review-note"><h3>Observação</h3><p>${escapeHtml(rule.note)}</p></section>`:''}</section>`;
+  window.scrollTo({top:0,behavior:'smooth'});
+ },0);
 }
 function openRuleModal(term){ const book=getRuleBook(); if(!book)return; const found=(book.search(term,{limit:1})||[])[0]?.rule; if(found) openRuleById(found.id); }
 function closeRuleModal(){}
@@ -695,7 +753,8 @@ function renderTab(tab) {
         const prevKey = getSkillKey(tab, path.skills[idx - 1].name);
         html += `<div class="path-line ${unlocked[prevKey] ? 'active' : ''}"></div>`;
       }
-      html += renderSkillCard(skill, tab, idx * 80);
+      // Removido delay acumulativo de animação para mobile - usa delay fixo pequeno
+      html += renderSkillCard(skill, tab, idx > 3 ? 0 : idx * 50);
     });
 
     html += `</div>`;
@@ -740,7 +799,12 @@ function renderAbilitiesHub() {
   ).join('');
   return `<section class="abilities-hub fade-in"><header class="section-hero"><div><span class="section-eyebrow">PROGRESSÃO</span><h2>🌳 Árvore de Habilidades</h2><p>Consulte e administre a progressão do personagem. Na ficha ficam apenas as habilidades já adquiridas.</p></div></header><div class="skill-element-nav">${buttons}</div><div id="skill-tree-content">${renderTab(currentSkillElement)}</div></section>`;
 }
-window.selectSkillElement = function(key){ currentSkillElement=key; const main=document.getElementById('main-content'); main.innerHTML=renderAbilitiesHub(); if(window.lucide) lucide.createIcons(); };
+window.selectSkillElement = function(key){
+  currentSkillElement=key;
+  const main=document.getElementById('main-content');
+  main.innerHTML=renderAbilitiesHub();
+  if(window.lucide) lucide.createIcons();
+};
 
 function switchTab(tab) {
   if (currentTab === 'personagem' && tab !== 'personagem' && isDirty) window.saveCharacterData({silent:true});
@@ -749,7 +813,11 @@ function switchTab(tab) {
   const mainContent = document.getElementById('main-content');
   document.body.dataset.section = tab;
   if (tab === 'regras') {
-    mainContent.innerHTML = renderRulesPage(); renderRulesContext(); searchRules('');
+    mainContent.innerHTML = renderRulesPage();
+    // Delay para garantir que o DOM esteja pronto antes de executar searchRules
+    setTimeout(() => {
+      searchRules('');
+    }, 100);
   } else if (tab === 'personagem') {
     mainContent.innerHTML = renderCharacterSheet(); if (window.lucide) window.lucide.createIcons();
   } else if (tab === 'habilidades') {

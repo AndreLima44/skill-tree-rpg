@@ -1792,6 +1792,21 @@ body {
     ease;
 }
 
+/* Otimização mobile: reduz animações para melhorar performance */
+@media (max-width: 640px) {
+  .fade-in {
+    animation: none;
+  }
+
+  .skill-card {
+    transition: none;
+  }
+
+  .skill-card:hover {
+    transform: none;
+  }
+}
+
 
 /* =========================================================
    STEAM DECK / TABLETS
