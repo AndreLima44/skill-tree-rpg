@@ -1,7 +1,264 @@
 const supabaseUrl = 'https://djtxrejpqunrqvgxobco.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqdHhyZWpwcXVucnF2Z3hvYmNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5MTQ4ODIsImV4cCI6MjA5MDQ5MDg4Mn0.bcYtB_NEpLw1cbU5SEecRtcFnlWzfuPD3iejXlKWJ2A';
-const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+const supabaseClient = window.supabase.createClient(
+  supabaseUrl,
+  supabaseKey
+);
+
+
+// =========================================================
+// TEMAS DE CORES
+// =========================================================
+
+const THEME_STORAGE_KEY = 'elemento-frio-theme';
+
+const VALID_THEMES = new Set([
+  'dark',
+  'ice',
+  'fire',
+  'earth',
+  'energy',
+  'void',
+  'gold'
+]);
+
+
+/**
+ * Retorna o tema atual.
+ * Caso exista um tema antigo/inválido salvo,
+ * volta automaticamente para o tema Escuro.
+ */
+function getCurrentTheme() {
+  const theme =
+    document.documentElement.dataset.theme || 'dark';
+
+  return VALID_THEMES.has(theme)
+    ? theme
+    : 'dark';
+}
+
+
+/**
+ * Atualiza a interface do seletor de temas
+ * e também a cor do navegador/mobile.
+ */
+function updateThemeUI() {
+  const current = getCurrentTheme();
+
+  document
+    .querySelectorAll('[data-theme-option]')
+    .forEach((option) => {
+      option.classList.toggle(
+        'active',
+        option.dataset.themeOption === current
+      );
+    });
+
+
+  const themeColors = {
+  dark: '#09090b',
+
+  ice: '#07141d',
+
+  fire: '#170b09',
+
+  earth: '#09130d',
+
+  energy: '#07111e',
+
+  void: '#070609',
+
+  gold: '#151007'
+};
+
+
+  const meta =
+    document.querySelector('meta[name="theme-color"]');
+
+  if (meta) {
+    meta.setAttribute(
+      'content',
+      themeColors[current] || themeColors.dark
+    );
+  }
+}
+
+
+/**
+ * Altera o tema e salva no navegador.
+ */
+window.setTheme = function(theme) {
+
+  if (!VALID_THEMES.has(theme)) {
+    theme = 'dark';
+  }
+
+  document.documentElement.dataset.theme = theme;
+
+  try {
+    localStorage.setItem(
+      THEME_STORAGE_KEY,
+      theme
+    );
+  } catch (_) {}
+
+  updateThemeUI();
+
+  window.closeThemeMenu();
+};
+
+
+/**
+ * Abre/fecha o seletor de temas.
+ */
+window.toggleThemeMenu = function(event) {
+
+  if (event) {
+    event.stopPropagation();
+  }
+
+  const menu =
+    document.getElementById('theme-menu');
+
+  const button =
+    document.getElementById('theme-toggle-btn');
+
+  if (!menu) {
+    return;
+  }
+
+  const willOpen =
+    menu.classList.contains('hidden');
+
+  menu.classList.toggle(
+    'hidden',
+    !willOpen
+  );
+
+  if (button) {
+    button.setAttribute(
+      'aria-expanded',
+      String(willOpen)
+    );
+  }
+
+  if (willOpen) {
+    updateThemeUI();
+  }
+};
+
+
+/**
+ * Fecha o seletor de temas.
+ */
+window.closeThemeMenu = function() {
+
+  const menu =
+    document.getElementById('theme-menu');
+
+  const button =
+    document.getElementById('theme-toggle-btn');
+
+  if (menu) {
+    menu.classList.add('hidden');
+  }
+
+  if (button) {
+    button.setAttribute(
+      'aria-expanded',
+      'false'
+    );
+  }
+};
+
+
+/**
+ * Fecha o menu ao clicar fora.
+ */
+document.addEventListener(
+  'click',
+  (event) => {
+
+    const picker =
+      event.target.closest &&
+      event.target.closest('.theme-picker-wrap');
+
+    if (!picker) {
+      window.closeThemeMenu();
+    }
+  }
+);
+
+
+/**
+ * Fecha o menu com ESC.
+ */
+document.addEventListener(
+  'keydown',
+  (event) => {
+
+    if (event.key === 'Escape') {
+      window.closeThemeMenu();
+    }
+  }
+);
+
+
+/**
+ * Corrige temas antigos salvos.
+ *
+ * Se alguém tinha "arcane" salvo antes,
+ * o sistema converte automaticamente
+ * para "void".
+ */
+function migrateOldTheme() {
+
+  try {
+
+    const saved =
+      localStorage.getItem(
+        THEME_STORAGE_KEY
+      );
+
+    if (saved === 'arcane') {
+
+      localStorage.setItem(
+        THEME_STORAGE_KEY,
+        'void'
+      );
+
+      document.documentElement.dataset.theme =
+        'void';
+
+      return;
+    }
+
+
+    if (
+      !saved ||
+      !VALID_THEMES.has(saved)
+    ) {
+
+      localStorage.setItem(
+        THEME_STORAGE_KEY,
+        'dark'
+      );
+
+      document.documentElement.dataset.theme =
+        'dark';
+    }
+
+  } catch (_) {}
+}
+
+
+migrateOldTheme();
+
+document.addEventListener(
+  'DOMContentLoaded',
+  updateThemeUI
+);
 // Estado Global
 let currentMainTab = 'personagem';
 let currentTab = 'personagem';
@@ -456,55 +713,23 @@ function renderTab(tab) {
 function renderTabs() {
   const container = document.getElementById('tabs-container');
 
-  let tabsHtml = Object.entries(TAB_META)
-    .map(([key, label]) => {
-      /*
-       * TAB_META provavelmente possui valores assim:
-       *
-       * personagem: "👤 Ficha"
-       * combate: "⚔️ Combate"
-       * habilidades: "🌳 Habilidades"
-       * regras: "📖 Regras"
-       *
-       * Aqui separamos automaticamente o emoji do texto
-       * para permitir emoji em cima e texto embaixo no mobile.
-       */
+  let tabsHtml = Object.entries(TAB_META).map(([key, label]) => {
+    const match = label.match(/^(\S+)\s+(.+)$/);
+    const icon = match ? match[1] : '';
+    const text = match ? match[2] : label;
 
-      const match = label.match(/^(\S+)\s+(.+)$/);
+    return `<button class="tab-btn ${key === currentTab ? 'active' : ''}" data-tab="${key}" onclick="switchTab('${key}')" title="${text}">
+      <span class="nav-icon">${icon}</span>
+      <span class="nav-label">${text}</span>
+    </button>`;
+  }).join('');
 
-      const icon = match ? match[1] : '';
-      const text = match ? match[2] : label;
-
-      return `
-        <button
-          class="tab-btn ${key === currentTab ? 'active' : ''}"
-          data-tab="${key}"
-          onclick="switchTab('${key}')"
-          title="${text}"
-        >
-          <span class="nav-icon">${icon}</span>
-          <span class="nav-label">${text}</span>
-        </button>
-      `;
-    })
-    .join('');
-
-
-  /* Botão exclusivo do Mestre */
   if (currentRole === 'admin') {
-    tabsHtml += `
-      <button
-        class="tab-btn ${currentTab === 'mestre' ? 'active' : ''}"
-        data-tab="mestre"
-        onclick="switchTab('mestre')"
-        title="Mestre"
-      >
-        <span class="nav-icon">⚙️</span>
-        <span class="nav-label">Mestre</span>
-      </button>
-    `;
+    tabsHtml += `<button class="tab-btn ${currentTab === 'mestre' ? 'active' : ''}" data-tab="mestre" onclick="switchTab('mestre')" title="Mestre">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Mestre</span>
+    </button>`;
   }
-
 
   container.innerHTML = tabsHtml;
 }

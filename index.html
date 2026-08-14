@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" class="h-full">
+<html lang="pt-BR" class="h-full" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
 
@@ -9,6 +9,16 @@
   />
 
   <meta name="theme-color" content="#0d0d12" />
+
+  <!-- Aplica o tema salvo antes do CSS para evitar piscar o tema padrão -->
+  <script>
+    (() => {
+      try {
+        const savedTheme = localStorage.getItem('elemento-frio-theme') || 'dark';
+        document.documentElement.dataset.theme = savedTheme;
+      } catch (_) {}
+    })();
+  </script>
 
   <title>Elemento do Frio RPG</title>
 
@@ -85,11 +95,7 @@
 
         <div class="topbar-left">
 
-          <div
-            class="header-identity"
-            onclick="openCharacterPicker()"
-            title="Trocar personagem"
-          >
+          <div class="header-identity" onclick="openCharacterPicker()" title="Mestre: trocar personagem">
 
             <div
               id="header-avatar"
@@ -105,7 +111,7 @@
                 id="page-title"
                 class="page-title"
               >
-                Elemento do Frio
+                Árvore de Habilidades
               </h1>
 
               <p
@@ -144,6 +150,76 @@
           </div>
 
 
+          <!-- SELETOR DE TEMA -->
+          <div class="theme-picker-wrap">
+            <button
+              id="theme-toggle-btn"
+              type="button"
+              onclick="toggleThemeMenu(event)"
+              class="theme-toggle-btn"
+              aria-haspopup="true"
+              aria-expanded="false"
+              title="Alterar tema"
+            >
+              <span class="theme-toggle-icon">🎨</span>
+              <span class="theme-toggle-label">Tema</span>
+            </button>
+
+            <div id="theme-menu" class="theme-menu hidden" role="menu">
+              <div class="theme-menu-head">
+                <div>
+                  <strong>Alterar tema</strong>
+                  <small>Escolha as cores da interface</small>
+                </div>
+                <button type="button" class="theme-menu-close" onclick="closeThemeMenu()" aria-label="Fechar">×</button>
+              </div>
+
+              <div class="theme-options">
+                <button type="button" class="theme-option" data-theme-option="dark" onclick="setTheme('dark')">
+                  <span class="theme-preview theme-preview-dark"><i></i><i></i><i></i></span>
+                  <span><strong>Escuro</strong><small>Preto, grafite e cinza</small></span>
+                  <b class="theme-check">✓</b>
+                </button>
+
+                <button type="button" class="theme-option" data-theme-option="ice" onclick="setTheme('ice')">
+                  <span class="theme-preview theme-preview-ice"><i></i><i></i><i></i></span>
+                  <span><strong>Gelo</strong><small>Azul e ciano</small></span>
+                  <b class="theme-check">✓</b>
+                </button>
+
+                <button type="button" class="theme-option" data-theme-option="fire" onclick="setTheme('fire')">
+                  <span class="theme-preview theme-preview-fire"><i></i><i></i><i></i></span>
+                  <span><strong>Fogo</strong><small>Vermelho e laranja</small></span>
+                  <b class="theme-check">✓</b>
+                </button>
+
+                <button type="button" class="theme-option" data-theme-option="earth" onclick="setTheme('earth')">
+                  <span class="theme-preview theme-preview-earth"><i></i><i></i><i></i></span>
+                  <span><strong>Terra</strong><small>Verde natural</small></span>
+                  <b class="theme-check">✓</b>
+                </button>
+
+                <button type="button" class="theme-option" data-theme-option="energy" onclick="setTheme('energy')">
+                  <span class="theme-preview theme-preview-energy"><i></i><i></i><i></i></span>
+                  <span><strong>Energia</strong><small>Azul elétrico</small></span>
+                  <b class="theme-check">✓</b>
+                </button>
+
+                <button type="button" class="theme-option" data-theme-option="void" onclick="setTheme('void')">
+                  <span class="theme-preview theme-preview-void"><i></i><i></i><i></i></span>
+                  <span><strong>Vazio</strong><small>Preto, roxo profundo e cinza</small></span>
+                  <b class="theme-check">✓</b>
+                </button>
+
+                <button type="button" class="theme-option" data-theme-option="gold" onclick="setTheme('gold')">
+                  <span class="theme-preview theme-preview-gold"><i></i><i></i><i></i></span>
+                  <span><strong>Dourado</strong><small>Ouro e preto</small></span>
+                  <b class="theme-check">✓</b>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <button
             onclick="logout()"
             class="logout-btn"
@@ -155,15 +231,20 @@
 
       </div>
 
+
+      <p class="header-subtitle">
+        Selecione um elemento para visualizar as habilidades
+      </p>
+
     </header>
 
 
-    <!-- NAVEGAÇÃO PRINCIPAL -->
-    <nav id="tabs-nav" class="main-navigation">
+    <!-- NAVEGAÇÃO -->
+    <nav id="tabs-nav">
 
       <div
         id="tabs-container"
-        class="main-navigation-inner scroll-container"
+        class="flex gap-2 overflow-x-auto scroll-container"
       ></div>
 
     </nav>
@@ -213,7 +294,7 @@
   <!-- DADOS DAS HABILIDADES -->
   <script src="skills-data.js"></script>
 
-  <!-- LIVRO DE REGRAS -->
+  <!-- LIVRO DE REGRAS: BASE MODULAR -->
   <script type="module" src="rules/index.js"></script>
 
   <!-- ÍCONES -->

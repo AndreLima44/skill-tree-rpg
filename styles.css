@@ -370,7 +370,7 @@ body {
 
   overflow-x: auto;
 
-  gap: 40px;
+  gap: 5px;
 }
 
 .tab-btn {
@@ -1891,23 +1891,30 @@ body {
 @media (max-width: 640px) {
 
   .app-header {
-    padding: 7px 7px;
+    padding:
+      7px
+      7px;
   }
 
   .header-avatar {
     width: 34px;
     height: 34px;
+
     border-radius: 7px;
   }
 
   .page-title {
     max-width: 46vw;
-    font-size: 14px;
+
+    font-size:
+      14px;
   }
 
   .user-label {
     max-width: 46vw;
-    font-size: 9px;
+
+    font-size:
+      9px;
   }
 
   .topbar-right {
@@ -1915,194 +1922,165 @@ body {
   }
 
   .admin-label {
-    display: none;
+    display:
+      none;
   }
 
   .admin-select {
-    max-width: 110px;
-    padding: 4px 5px;
-    font-size: 9px;
+    max-width:
+      110px;
+
+    padding:
+      4px
+      5px;
+
+    font-size:
+      9px;
   }
 
   .logout-btn {
-    padding: 4px 6px;
-    font-size: 9px;
+    padding:
+      4px
+      6px;
+
+    font-size:
+      9px;
   }
 
-
-  /* =====================================================
-     NAVEGAÇÃO MOBILE
-     Emoji em cima + texto embaixo
-     ===================================================== */
-
   #tabs-nav {
-    padding: 4px 5px calc(5px + env(safe-area-inset-bottom));
-    gap: 10px;
-
-    display: flex;
-    align-items: stretch;
-    justify-content: space-around;
+    padding:
+      3px
+      5px
+      6px;
   }
 
   .tab-btn {
-    flex: 1 1 0;
+    padding:
+      6px
+      8px;
 
-    min-width: 0;
-    min-height: 56px;
-
-    padding: 5px 3px;
-
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-
-    gap: 10px;
-
-    font-size: 10px;
-    line-height: 1.1;
-    text-align: center;
-
-    border-radius: 9px;
-
-    cursor: pointer;
-    touch-action: manipulation;
+    font-size:
+      9px;
   }
-
-  /*
-    Caso o botão tenha:
-
-    <span class="nav-icon">👤</span>
-    <span class="nav-label">Ficha</span>
-
-    essas regras deixam o emoji maior.
-  */
-
-  .tab-btn .nav-icon {
-    display: block;
-
-    font-size: 22px;
-    line-height: 1;
-
-    margin: 0;
-  }
-
-  .tab-btn .nav-label {
-    display: block;
-
-    font-size: 10px;
-    line-height: 1.1;
-
-    white-space: nowrap;
-  }
-
-
-  /* =====================================================
-     CONTEÚDO
-     ===================================================== */
 
   #main-content {
-    padding-left: 5px;
-    padding-right: 5px;
+    padding-left:
+      5px;
+
+    padding-right:
+      5px;
   }
 
   .character-summary-card {
-    padding: 7px;
+    padding:
+      7px;
   }
 
   .character-fields-grid {
     grid-template-columns:
       repeat(
         2,
-        minmax(0, 1fr)
+        minmax(
+          0,
+          1fr
+        )
       );
 
-    gap: 6px 7px;
+    gap:
+      6px
+      7px;
   }
 
   .sheet-wrapper > .grid > div:first-child {
-    grid-template-columns: 1fr;
+    grid-template-columns:
+      1fr;
   }
-
-
-  /* =====================================================
-     PERÍCIAS
-     ===================================================== */
 
   .skill-header,
   .skill-row {
     grid-template-columns:
-      minmax(85px, 1.4fr)
+      minmax(
+        85px,
+        1.4fr
+      )
       31px
       41px
       35px
       41px;
 
-    gap: 3px;
+    gap:
+      3px;
   }
 
   .skill-name {
-    font-size: 10px;
+    font-size:
+      10px;
   }
 
   .skill-attr {
-    font-size: 8px;
+    font-size:
+      8px;
   }
 
   .skill-cell {
-    font-size: 10px;
+    font-size:
+      10px;
   }
 
-
-  /* =====================================================
-     ESCUDO / COMBATE
-     ===================================================== */
-
   .shield-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns:
+      1fr;
   }
 
   .shield-stat-grid {
     grid-template-columns:
-      repeat(5, 1fr);
+      repeat(
+        5,
+        1fr
+      );
   }
 
   .shield-meta-row {
-    flex-direction: column;
-    gap: 2px;
+    flex-direction:
+      column;
+
+    gap:
+      2px;
   }
 
-
-  /* =====================================================
-     LIVRO DE REGRAS
-     ===================================================== */
-
   .rules-quick-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns:
+      1fr;
   }
 
   .rules-search-wrap {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction:
+      column;
+
+    align-items:
+      stretch;
   }
 
-
-  /* =====================================================
-     AUTOSAVE
-     ===================================================== */
-
   .save-bar {
-    left: 5px;
-    right: 5px;
-    bottom: 5px;
+    left:
+      5px;
 
-    justify-content: space-between;
+    right:
+      5px;
 
-    border-radius: 9px;
+    bottom:
+      5px;
+
+    justify-content:
+      space-between;
+
+    border-radius:
+      9px;
   }
 
   .save-status {
-    max-width: 65vw;
+    max-width:
+      65vw;
   }
 
 }
@@ -2145,3 +2123,697 @@ body {
 body:not([data-section="personagem"]) #save-bar{display:none!important}
 @media(min-width:900px){#app{padding-left:72px}.app-header{margin-left:-72px;padding-left:84px!important}#tabs-nav{position:fixed!important;left:0;top:0;bottom:0;width:72px;padding:74px 8px 10px!important;background:#101017;border-right:1px solid rgba(255,255,255,.06);z-index:15}#tabs-container{height:100%;display:flex!important;flex-direction:column;overflow:visible!important}.tab-btn{width:54px;min-height:50px;padding:7px 4px!important;white-space:normal!important;font-size:0!important;line-height:1.15}.tab-btn::first-letter{font-size:20px}.tab-btn[data-tab="personagem"]::after{content:'Ficha'}.tab-btn[data-tab="combate"]::after{content:'Combate'}.tab-btn[data-tab="habilidades"]::after{content:'Skills'}.tab-btn[data-tab="regras"]::after{content:'Regras'}.tab-btn[data-tab="mestre"]::after{content:'Mestre'}.tab-btn::after{display:block;font-size:8px;margin-top:4px}.header-identity{cursor:pointer}}
 @media(max-width:899px){#main-content{padding-bottom:76px!important}#tabs-nav{position:fixed!important;left:0;right:0;bottom:0;top:auto!important;z-index:80;padding:5px max(6px,env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))!important;background:rgba(13,13,18,.96);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.08)}#tabs-container{justify-content:space-around!important;overflow:visible!important}.tab-btn{flex:1;max-width:110px;padding:7px 3px!important;font-size:9px!important;white-space:normal!important}.save-bar{bottom:62px!important}.battle-allies,.battle-enemies{grid-template-columns:1fr}.master-actions{grid-template-columns:1fr}.section-hero,.combat-header{align-items:flex-start;flex-direction:column}.combat-admin-actions{width:100%}.combat-admin-actions button{flex:1}}
+
+/* Atualizacoes ao vivo: os cards permanecem no lugar e apenas seus dados mudam. */
+.battle-resource i {
+  transition: width .22s ease;
+}
+.battle-card {
+  animation: none;
+}
+
+/* =========================================================
+   TEMAS PERSONALIZAVEIS
+   A escolha e salva em localStorage pelo app.js.
+========================================================= */
+
+:root,
+html[data-theme="dark"] {
+
+  --bg-color: #09090b;
+
+  --surface-color: #18181b;
+  --surface-soft: #111113;
+  --surface-hover: #27272a;
+  --surface-raised: #202024;
+
+  --text-color: #f4f4f5;
+  --muted-color: #a1a1aa;
+
+  --primary-color: #a1a1aa;
+  --primary-hover: #d4d4d8;
+
+  --primary-rgb: 161, 161, 170;
+  --primary-contrast: #09090b;
+
+  --secondary-color: #71717a;
+
+  --border-color:
+    rgba(161, 161, 170, 0.22);
+
+  --border-strong:
+    rgba(161, 161, 170, 0.38);
+  --border-soft: rgba(244, 244, 245, 0.09);
+  --nav-color: #0f0f12;
+
+  --primary-soft:
+    rgba(161, 161, 170, 0.10);
+
+  --primary-medium:
+    rgba(161, 161, 170, 0.18);
+
+  color-scheme: dark;
+}
+
+html[data-theme="ice"] {
+  --bg-color: #07141d;
+  --surface-color: #102430;
+  --surface-soft: #0b1c26;
+  --surface-raised: #153342;
+  --text-color: #e9f8ff;
+  --muted-color: #9dc3d4;
+  --primary-color: #38bdf8;
+  --primary-hover: #0ea5e9;
+  --primary-rgb: 56, 189, 248;
+  --primary-contrast: #03131c;
+  --secondary-color: #35657a;
+  --border-color: rgba(56, 189, 248, .29);
+  --border-soft: rgba(186, 230, 253, .11);
+  --nav-color: #081923;
+}
+
+html[data-theme="fire"] {
+  --bg-color: #170b09;
+  --surface-color: #291310;
+  --surface-soft: #1f0f0d;
+  --surface-raised: #351915;
+  --text-color: #fff0e9;
+  --muted-color: #d3aaa0;
+  --primary-color: #f97316;
+  --primary-hover: #ea580c;
+  --primary-rgb: 249, 115, 22;
+  --primary-contrast: #1a0903;
+  --secondary-color: #754030;
+  --border-color: rgba(249, 115, 22, .3);
+  --border-soft: rgba(255, 225, 211, .1);
+  --nav-color: #1b0c09;
+}
+
+html[data-theme="earth"] {
+  --bg-color: #09130d;
+  --surface-color: #13251a;
+  --surface-soft: #0e1c14;
+  --surface-raised: #1a3121;
+  --text-color: #ecf8ee;
+  --muted-color: #a5c2aa;
+  --primary-color: #4ade80;
+  --primary-hover: #22c55e;
+  --primary-rgb: 74, 222, 128;
+  --primary-contrast: #05150b;
+  --secondary-color: #42684c;
+  --border-color: rgba(74, 222, 128, .28);
+  --border-soft: rgba(220, 252, 231, .1);
+  --nav-color: #0b1710;
+}
+
+html[data-theme="energy"] {
+  --bg-color: #07111e;
+  --surface-color: #0d2035;
+  --surface-soft: #09182a;
+  --surface-raised: #12304d;
+  --text-color: #edf6ff;
+  --muted-color: #9bbbd7;
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-rgb: 59, 130, 246;
+  --primary-contrast: #ffffff;
+  --secondary-color: #385d8a;
+  --border-color: rgba(59, 130, 246, .3);
+  --border-soft: rgba(219, 234, 254, .1);
+  --nav-color: #081523;
+}
+
+html[data-theme="void"] {
+
+  --bg-color: #070609;
+
+  --surface-color: #121015;
+  --surface-soft: #0d0b10;
+  --surface-hover: #21172a;
+  --surface-raised: #1a151f;
+
+  --text-color: #eeeaf1;
+  --muted-color: #9e96a5;
+
+  --primary-color: #7c3aed;
+  --primary-hover: #8b5cf6;
+
+  --primary-rgb: 124, 58, 237;
+  --primary-contrast: #ffffff;
+
+  --secondary-color: #6b6470;
+
+  --border-color:
+    rgba(124, 58, 237, 0.25);
+
+  --border-strong:
+    rgba(139, 92, 246, 0.42);
+  --border-soft: rgba(238, 234, 241, 0.09);
+  --nav-color: #0c0910;
+
+  --primary-soft:
+    rgba(124, 58, 237, 0.10);
+
+  --primary-medium:
+    rgba(124, 58, 237, 0.18);
+
+  color-scheme: dark;
+}
+
+html[data-theme="gold"] {
+  --bg-color: #151007;
+  --surface-color: #261d0d;
+  --surface-soft: #1c160a;
+  --surface-raised: #332711;
+  --text-color: #fff8df;
+  --muted-color: #cbbd8c;
+  --primary-color: #eab308;
+  --primary-hover: #ca8a04;
+  --primary-rgb: 234, 179, 8;
+  --primary-contrast: #171004;
+  --secondary-color: #6c5a26;
+  --border-color: rgba(234, 179, 8, .3);
+  --border-soft: rgba(254, 249, 195, .1);
+  --nav-color: #181207;
+}
+
+html[data-theme] body {
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color .22s ease, color .22s ease;
+}
+
+html[data-theme] .login-screen {
+  background:
+    radial-gradient(circle at top, rgba(var(--primary-rgb), .18), transparent 38%),
+    var(--bg-color);
+}
+html[data-theme] .login-card,
+html[data-theme] .skill-card,
+html[data-theme] .shield-card {
+  background: var(--surface-color);
+  border-color: var(--border-color);
+}
+html[data-theme] .login-title,
+html[data-theme] .page-title,
+html[data-theme] .shield-char-name,
+html[data-theme] .section-eyebrow,
+html[data-theme] .rules-eyebrow,
+html[data-theme] .rule-kicker {
+  color: var(--primary-color);
+}
+html[data-theme] .login-input,
+html[data-theme] .admin-select,
+html[data-theme] .rules-search-wrap input,
+html[data-theme] .rule-search input {
+  background: var(--surface-soft);
+  color: var(--text-color);
+  border-color: var(--border-soft);
+}
+html[data-theme] .login-input:focus,
+html[data-theme] .field-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), .13);
+}
+html[data-theme] .login-button,
+html[data-theme] .save-btn,
+html[data-theme] .tab-btn.active,
+html[data-theme] .primary-action,
+html[data-theme] .combat-admin-actions button,
+html[data-theme] .combat-section-head button,
+html[data-theme] .master-actions button,
+html[data-theme] .rules-search-wrap button,
+html[data-theme] .rule-result-card > button {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+  color: var(--primary-contrast);
+  border-color: rgba(var(--primary-rgb), .35);
+}
+html[data-theme] .app-header {
+  background: linear-gradient(180deg, rgba(var(--primary-rgb), .09), var(--bg-color));
+  border-color: var(--border-soft);
+}
+html[data-theme] .header-avatar,
+html[data-theme] .battle-avatar {
+  background: rgba(var(--primary-rgb), .15);
+  border-color: var(--border-color);
+  color: var(--primary-color);
+}
+html[data-theme] #tabs-nav {
+  background: var(--nav-color);
+  border-color: var(--border-soft);
+}
+html[data-theme] .tab-btn {
+  color: var(--text-color);
+}
+html[data-theme] .tab-btn:hover {
+  background: rgba(var(--primary-rgb), .13);
+}
+html[data-theme] .skill-card:hover,
+html[data-theme] .skill-card.unlocked {
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 25px rgba(var(--primary-rgb), .13);
+}
+html[data-theme] .skill-card.unlocked {
+  background: linear-gradient(135deg, var(--surface-color), rgba(var(--primary-rgb), .12));
+}
+html[data-theme] .checkbox-custom:checked,
+html[data-theme] .res-dot.filled {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+html[data-theme] .glow-box,
+html[data-theme] .rule-section,
+html[data-theme] .rule-result-card,
+html[data-theme] .battle-card,
+html[data-theme] .combat-empty {
+  border-color: var(--border-soft);
+  background-color: color-mix(in srgb, var(--surface-color) 78%, transparent);
+}
+html[data-theme] .sheet-wrapper .glow-box {
+  border-color: var(--border-color);
+  background: color-mix(in srgb, var(--surface-color) 88%, transparent);
+  box-shadow: 0 0 12px rgba(var(--primary-rgb), .05), inset 0 0 20px rgba(var(--primary-rgb), .025);
+}
+html[data-theme] .attr-box,
+html[data-theme] .sheet-wrapper .attr-box,
+html[data-theme] .battle-stats span {
+  border-color: var(--border-soft);
+  background: color-mix(in srgb, var(--surface-soft) 82%, black);
+}
+html[data-theme] .sheet-info-label,
+html[data-theme] .attr-label,
+html[data-theme] .mini-label,
+html[data-theme] .battle-card-head > b {
+  color: color-mix(in srgb, var(--primary-color) 78%, white);
+}
+html[data-theme] .field-input,
+html[data-theme] .mini-input,
+html[data-theme] .skill-cell,
+html[data-theme] .attack-input-field {
+  color: var(--text-color);
+  border-color: var(--border-color);
+}
+html[data-theme] .save-bar {
+  background: color-mix(in srgb, var(--bg-color) 92%, transparent);
+  border-color: var(--border-color);
+}
+html[data-theme] .rule-category-chip,
+html[data-theme] .rulebook-popular button,
+html[data-theme] .rule-related-item,
+html[data-theme] .skill-rule-link,
+html[data-theme] .rules-context button,
+html[data-theme] .rules-quick-grid button,
+html[data-theme] .rule-related button {
+  border-color: var(--border-color);
+  background: rgba(var(--primary-rgb), .08);
+  color: var(--text-color);
+}
+html[data-theme] .rule-term {
+  color: color-mix(in srgb, var(--primary-color) 74%, white);
+  border-color: var(--primary-color);
+}
+html[data-theme] .rule-modal-card {
+  background: var(--surface-color);
+  border-color: var(--border-color);
+}
+html[data-theme] .scroll-container {
+  scrollbar-color: var(--secondary-color) transparent;
+}
+html[data-theme] .scroll-container::-webkit-scrollbar-thumb {
+  background: var(--secondary-color);
+}
+
+/* Navegacao com icone separado do texto */
+.tab-btn .nav-icon,
+.tab-btn .nav-label {
+  display: block;
+  pointer-events: none;
+}
+.tab-btn .nav-icon { line-height: 1; }
+
+@media (min-width: 900px) {
+  .tab-btn::after { content: none !important; }
+  .tab-btn::first-letter { font-size: inherit !important; }
+  .tab-btn .nav-icon { font-size: 21px; }
+  .tab-btn .nav-label { font-size: 8px; margin-top: 4px; }
+}
+
+@media (max-width: 899px) {
+  #tabs-container {
+    display: flex !important;
+    width: 100%;
+    align-items: stretch;
+    justify-content: space-around !important;
+    gap: 4px;
+  }
+  .tab-btn {
+    min-height: 58px;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .tab-btn .nav-icon { font-size: 22px; }
+  .tab-btn .nav-label { font-size: 9px; line-height: 1; white-space: nowrap; }
+}
+
+/* =========================================================
+   SELETOR DE TEMA
+========================================================= */
+.theme-picker-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.theme-toggle-btn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: rgba(var(--primary-rgb), .08);
+  color: var(--text-color);
+  font: 700 10px 'Exo 2', sans-serif;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.theme-toggle-btn:hover {
+  background: rgba(var(--primary-rgb), .15);
+  border-color: var(--primary-color);
+}
+.theme-toggle-btn:active { transform: scale(.97); }
+.theme-toggle-icon { font-size: 15px; line-height: 1; }
+
+.theme-menu {
+  position: absolute;
+  z-index: 200;
+
+  top: calc(100% + 8px);
+  right: 0;
+
+  width: min(390px, calc(100vw - 18px));
+
+  padding: 10px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+
+  background:
+    color-mix(
+      in srgb,
+      var(--surface-color) 96%,
+      transparent
+    );
+
+  box-shadow:
+    0 18px 55px rgba(0,0,0,.48);
+
+  backdrop-filter: blur(16px);
+}
+.theme-menu-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 5px 10px;
+}
+.theme-menu-head strong,
+.theme-menu-head small { display: block; }
+.theme-menu-head strong { font: 700 13px 'Orbitron', sans-serif; }
+.theme-menu-head small { margin-top: 4px; font-size: 10px; color: var(--muted-color); }
+.theme-menu-close {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255,255,255,.05);
+  color: var(--text-color);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.theme-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.theme-option {
+  min-width: 0;
+
+  display: grid;
+
+  /* preview | texto | check */
+  grid-template-columns: 48px minmax(0, 1fr) 18px;
+
+  align-items: center;
+
+  /* espaço entre preview e nome */
+  column-gap: 12px;
+
+  padding: 9px;
+
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+
+  background: rgba(255,255,255,.025);
+
+  color: var(--text-color);
+  text-align: left;
+
+  cursor: pointer;
+}
+.theme-option:hover { background: rgba(var(--primary-rgb), .07); }
+.theme-option.active {
+  border-color: var(--primary-color);
+  background: rgba(var(--primary-rgb), .11);
+}
+.theme-option > span:nth-child(2) { min-width: 0; }
+.theme-option strong,
+.theme-option small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.theme-option strong { font-size: 11px; }
+.theme-option small { margin-top: 3px; font-size: 9px; line-height: 1.25; color: var(--muted-color);   white-space: normal;
+  overflow: hidden;  line-clamp: 2;  -webkit-line-clamp: 2;  -webkit-box-orient: vertical;}
+.theme-check {
+  opacity: 0;
+  color: var(--primary-color);
+  font-size: 13px;
+}
+.theme-option.active .theme-check { opacity: 1; }
+.theme-preview {
+  width: 40px;
+  height: 32px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  overflow: hidden;
+  padding: 3px;
+  border-radius: 8px;
+  background: #101017;
+  border: 1px solid rgba(255,255,255,.09);
+}
+/* =========================================================
+   PREVIEW DOS TEMAS
+========================================================= */
+
+.theme-preview {
+  width: 52px;
+  height: 34px;
+
+  flex: 0 0 auto;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 3px;
+
+  padding: 4px;
+
+  border-radius: 8px;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+}
+
+.theme-preview i {
+  border-radius: 3px;
+}
+
+
+/* =========================================================
+   ESCURO
+   Preto + Grafite + Cinza
+========================================================= */
+
+.theme-preview-dark {
+  background: #09090b;
+}
+
+.theme-preview-dark i:nth-child(1) {
+  background: #18181b;
+}
+
+.theme-preview-dark i:nth-child(2) {
+  background: #3f3f46;
+}
+
+.theme-preview-dark i:nth-child(3) {
+  background: #a1a1aa;
+}
+
+
+/* =========================================================
+   GELO
+========================================================= */
+
+.theme-preview-ice {
+  background: #07141d;
+}
+
+.theme-preview-ice i:nth-child(1) {
+  background: #38bdf8;
+}
+
+.theme-preview-ice i:nth-child(2) {
+  background: #102430;
+}
+
+.theme-preview-ice i:nth-child(3) {
+  background: #35657a;
+}
+
+
+/* =========================================================
+   FOGO
+========================================================= */
+
+.theme-preview-fire {
+  background: #170b09;
+}
+
+.theme-preview-fire i:nth-child(1) {
+  background: #f97316;
+}
+
+.theme-preview-fire i:nth-child(2) {
+  background: #291310;
+}
+
+.theme-preview-fire i:nth-child(3) {
+  background: #7c2d12;
+}
+
+
+/* =========================================================
+   TERRA
+========================================================= */
+
+.theme-preview-earth {
+  background: #09130d;
+}
+
+.theme-preview-earth i:nth-child(1) {
+  background: #4ade80;
+}
+
+.theme-preview-earth i:nth-child(2) {
+  background: #13251a;
+}
+
+.theme-preview-earth i:nth-child(3) {
+  background: #42684c;
+}
+
+
+/* =========================================================
+   ENERGIA
+========================================================= */
+
+.theme-preview-energy {
+  background: #07111e;
+}
+
+.theme-preview-energy i:nth-child(1) {
+  background: #3b82f6;
+}
+
+.theme-preview-energy i:nth-child(2) {
+  background: #0d2035;
+}
+
+.theme-preview-energy i:nth-child(3) {
+  background: #38bdf8;
+}
+
+
+/* =========================================================
+   VAZIO
+   Preto + Roxo profundo + Cinza
+========================================================= */
+
+.theme-preview-void {
+  background: #070609;
+}
+
+.theme-preview-void i:nth-child(1) {
+  background: #7c3aed;
+}
+
+.theme-preview-void i:nth-child(2) {
+  background: #21172a;
+}
+
+.theme-preview-void i:nth-child(3) {
+  background: #6b6470;
+}
+
+
+/* =========================================================
+   DOURADO
+========================================================= */
+
+.theme-preview-gold {
+  background: #151007;
+}
+
+.theme-preview-gold i:nth-child(1) {
+  background: #eab308;
+}
+
+.theme-preview-gold i:nth-child(2) {
+  background: #261d0d;
+}
+
+.theme-preview-gold i:nth-child(3) {
+  background: #6c5a26;
+}
+@media (max-width: 640px) {
+  .theme-toggle-btn {
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+  .theme-toggle-label { display: none; }
+  .theme-toggle-icon { font-size: 16px; }
+  .theme-menu {
+    position: fixed;
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: min(68vh, 520px);
+    overflow: auto;
+  }
+  .theme-options { grid-template-columns: 1fr; }
+  .theme-option { min-height: 52px; }
+}
