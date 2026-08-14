@@ -5,8 +5,8 @@ function renderTabs() {
   if (!container) return;
 
   const tabs = currentRole === 'admin'
-    ? { jogadores:'👥 Jogadores', combate:'⚔️ Combate', bestiario:'📚 Bestiário', regras:'📖 Regras', mestre:'⚙️ Mestre' }
-    : TAB_META;
+    ? { jogadores:'👥 Jogadores', combate:'⚔️ Combate', bestiario:'📚 Bestiário', documentos:'📂 Documentos', regras:'📖 Regras', mestre:'⚙️ Mestre' }
+    : { personagem:'👤 Ficha', combate:'⚔️ Combate', habilidades:'🌳 Habilidades', documentos:'📂 Documentos', regras:'📖 Regras' };
 
   container.innerHTML = Object.entries(tabs).map(([key, label]) => {
     const match = label.match(/^(\S+)\s+(.+)$/);
@@ -39,14 +39,16 @@ function switchTab(tab) {
     if (tab === 'jogadores') return loadMasterPlayersOverview();
     if (tab === 'combate') return loadCombatView();
     if (tab === 'bestiario') return loadMasterHub('bestiary');
+    if (tab === 'documentos') return loadDocumentsPage();
     if (tab === 'regras') { main.innerHTML = renderRulesPage(); renderRulesContext(); searchRules(''); return; }
     if (tab === 'mestre') return loadMasterHub('session');
     return;
   }
 
+  document.getElementById('save-bar')?.classList.toggle('hidden', !['personagem'].includes(tab));
   if (tab === 'regras') { main.innerHTML = renderRulesPage(); renderRulesContext(); searchRules(''); }
   else if (tab === 'personagem') { main.innerHTML = renderCharacterSheet(); if (window.lucide) window.lucide.createIcons(); }
   else if (tab === 'habilidades') { main.innerHTML = renderAbilitiesHub(); if (window.lucide) window.lucide.createIcons(); }
   else if (tab === 'combate') loadCombatView();
+  else if (tab === 'documentos') loadDocumentsPage();
 }
-

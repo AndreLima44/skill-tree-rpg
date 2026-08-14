@@ -172,11 +172,13 @@ async function resyncVisibleSection() {
       if (currentTab === 'jogadores') return await loadMasterPlayersOverview();
       if (currentTab === 'combate') return scheduleCombatSync(20);
       if (currentTab === 'bestiario') return await loadMasterHub('bestiary');
+      if (currentTab === 'documentos') return await window.loadDocumentsPage?.({ silent:true });
       if (currentTab === 'mestre') return await loadMasterHub('session');
       return;
     }
     if (currentTab === 'personagem' && selectedUserId) return await loadCharacterData();
     if (currentTab === 'combate') return scheduleCombatSync(20);
+    if (currentTab === 'documentos') return await window.loadDocumentsPage?.({ silent:true });
   } catch (error) { console.warn('Falha ao ressincronizar a tela:', error); }
 }
 window.addEventListener('pageshow', (event) => { if (event.persisted) resyncVisibleSection(); });
@@ -1186,7 +1188,7 @@ function patchCombatInitiative(){
 
 async function syncCombatIncrementally(){
   const state=await fetchCombatState();
-  if(state.error || currentTab!=='combate') return;
+  if(state.error || currentTab !== 'combate') return;
   const nextBattleId=state.battle?.id||null;
   if(nextBattleId!==combatRenderedBattleId){
     activeBattle=state.battle; battleEnemies=state.enemies; combatPlayersCache=state.players;
@@ -1227,7 +1229,7 @@ window.startBattle=startBattle;window.endBattle=endBattle;window.advanceRound=ad
 
 
 // =========================================================
-// COMBAT SUITE 2.0 — alvo, acoes rapidas, efeitos, encontros e sessao
+// COMBAT SUITE 2.0 — alvo, acoes rapidas, efeitos e encontros
 // =========================================================
 let battleEffectsCache = [];
 let battleLogPublicCache = [];

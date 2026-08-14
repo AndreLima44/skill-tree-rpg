@@ -1,3 +1,6 @@
+-- ELEMENTO DO FRIO RPG - MIGRACAO COMPLETA V5
+-- Inclui a V3 consolidada + biblioteca de documentos.
+
 -- ============================================================
 -- ELEMENTO DO FRIO — MIGRACAO V3 CONSOLIDADA E IDEMPOTENTE
 -- Pode ser executada novamente sem duplicar modulos.
@@ -377,4 +380,165 @@ DO $$ BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.battle_effects; EXCEPTION WHEN duplicate_object THEN NULL; END;
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.battle_action_requests; EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;
+NOTIFY pgrst, 'reload schema';
+
+
+-- =========================================================
+-- ELEMENTO DO FRIO RPG - V4 DOCUMENTOS COMPARTILHADOS
+-- Execute depois de supabase-migration-v3.sql.
+-- Idempotente: pode ser executado novamente.
+-- =========================================================
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS public.shared_documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  description text NOT NULL DEFAULT '',
+  category text NOT NULL DEFAULT 'Geral',
+  tags text[] NOT NULL DEFAULT ARRAY[]::text[],
+  pinned boolean NOT NULL DEFAULT false,
+  storage_path text NOT NULL UNIQUE,
+  file_name text NOT NULL,
+  mime_type text NOT NULL DEFAULT 'application/octet-stream',
+  size_bytes bigint NOT NULL DEFAULT 0 CHECK (size_bytes >= 0),
+  created_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS shared_documents_created_idx ON public.shared_documents(created_at DESC);
+CREATE INDEX IF NOT EXISTS shared_documents_category_idx ON public.shared_documents(category);
+CREATE INDEX IF NOT EXISTS shared_documents_pinned_idx ON public.shared_documents(pinned DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS shared_documents_tags_idx ON public.shared_documents USING gin(tags);
+
+CREATE TABLE IF NOT EXISTS public.document_user_state (
+  document_id uuid NOT NULL REFERENCES public.shared_documents(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  favorite boolean NOT NULL DEFAULT false,
+  folder text NOT NULL DEFAULT '',
+  personal_tags text[] NOT NULL DEFAULT ARRAY[]::text[],
+  read_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (document_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS document_user_state_user_idx ON public.document_user_state(user_id);
+CREATE INDEX IF NOT EXISTS document_user_state_folder_idx ON public.document_user_state(user_id, folder);
+CREATE INDEX IF NOT EXISTS document_user_state_favorite_idx ON public.document_user_state(user_id, favorite);
+CREATE INDEX IF NOT EXISTS document_user_state_tags_idx ON public.document_user_state USING gin(personal_tags);
+
+ALTER TABLE public.shared_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.document_user_state ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS shared_documents_read_authenticated ON public.shared_documents;
+CREATE POLICY shared_documents_read_authenticated
+ON public.shared_documents FOR SELECT TO authenticated
+USING (true);
+
+DROP POLICY IF EXISTS shared_documents_admin_insert ON public.shared_documents;
+CREATE POLICY shared_documents_admin_insert
+ON public.shared_documents FOR INSERT TO authenticated
+WITH CHECK (
+  created_by = auth.uid()
+  AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+);
+
+DROP POLICY IF EXISTS shared_documents_admin_update ON public.shared_documents;
+CREATE POLICY shared_documents_admin_update
+ON public.shared_documents FOR UPDATE TO authenticated
+USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+DROP POLICY IF EXISTS shared_documents_admin_delete ON public.shared_documents;
+CREATE POLICY shared_documents_admin_delete
+ON public.shared_documents FOR DELETE TO authenticated
+USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
+
+DROP POLICY IF EXISTS document_user_state_own_select ON public.document_user_state;
+CREATE POLICY document_user_state_own_select
+ON public.document_user_state FOR SELECT TO authenticated
+USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS document_user_state_own_insert ON public.document_user_state;
+CREATE POLICY document_user_state_own_insert
+ON public.document_user_state FOR INSERT TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS document_user_state_own_update ON public.document_user_state;
+CREATE POLICY document_user_state_own_update
+ON public.document_user_state FOR UPDATE TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS document_user_state_own_delete ON public.document_user_state;
+CREATE POLICY document_user_state_own_delete
+ON public.document_user_state FOR DELETE TO authenticated
+USING (user_id = auth.uid());
+
+-- Bucket privado. Os arquivos so sao abertos por URL assinada.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'campaign-documents',
+  'campaign-documents',
+  false,
+  26214400,
+  ARRAY[
+    'application/pdf','application/octet-stream',
+    'image/png','image/jpeg','image/webp','image/gif',
+    'text/plain','text/markdown',
+    'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  ]::text[]
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = EXCLUDED.public,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+DROP POLICY IF EXISTS campaign_documents_read ON storage.objects;
+CREATE POLICY campaign_documents_read
+ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'campaign-documents');
+
+DROP POLICY IF EXISTS campaign_documents_admin_insert ON storage.objects;
+CREATE POLICY campaign_documents_admin_insert
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'campaign-documents'
+  AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+);
+
+DROP POLICY IF EXISTS campaign_documents_admin_update ON storage.objects;
+CREATE POLICY campaign_documents_admin_update
+ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'campaign-documents'
+  AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+)
+WITH CHECK (
+  bucket_id = 'campaign-documents'
+  AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+);
+
+DROP POLICY IF EXISTS campaign_documents_admin_delete ON storage.objects;
+CREATE POLICY campaign_documents_admin_delete
+ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'campaign-documents'
+  AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
+);
+
+-- Realtime para inclusao/edicao/remocao de metadados e organizacao pessoal.
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.shared_documents;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.document_user_state;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 NOTIFY pgrst, 'reload schema';
