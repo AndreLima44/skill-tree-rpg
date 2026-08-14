@@ -274,6 +274,20 @@ let currentUser = null;
 let currentRole = 'player';
 let selectedUserId = null;
 let profilesCache = [];
+let currentProfile = null;
+let presenceChannel = null;
+let onlineUserIds = new Set();
+
+// --- Central do Mestre ---
+let masterHubSection = 'session';
+let masterPlayersCache = [];
+let masterEnemiesCache = [];
+let masterBestiaryCache = [];
+let masterNotesCache = '';
+let masterBattleLogCache = [];
+let masterNotesTimer = null;
+let masterSetupWarnings = [];
+
 
 // --- Controle de carregamento / autosave ---
 // dataReady só fica true depois que a ficha do jogador selecionado terminou
@@ -288,13 +302,6 @@ let dirtyFields = new Set();
 let realtimeChannel = null;
 let isApplyingRemoteUpdate = false;
 const AUTOSAVE_DELAY_MS = 1200;
-
-// --- Cache de performance para regras ---
-let ruleTermsCache = null;
-let ruleTermsCacheExpiry = 0;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos
-let linkifyCache = new Map();
-const LINKIFY_CACHE_MAX = 200;
 
 function setSaveStatus(status) {
   // status: 'loading' | 'saved' | 'dirty' | 'saving' | 'error'
@@ -570,17 +577,10 @@ function findRuleForSkill(skillName) {
 }
 function getRuleTerms() {
   const book=getRuleBook(); if(!book) return [];
-  const now=Date.now();
-  if(ruleTermsCache && now<ruleTermsCacheExpiry) return ruleTermsCache;
-  ruleTermsCache=book.getAll().flatMap(r=>[r.title,...(r.aliases||[])]).filter(Boolean).sort((a,b)=>b.length-a.length);
-  ruleTermsCacheExpiry=now+CACHE_DURATION_MS;
-  return ruleTermsCache;
+  return book.getAll().flatMap(r=>[r.title,...(r.aliases||[])]).filter(Boolean).sort((a,b)=>b.length-a.length);
 }
 function escapeAttr(v=''){ return escapeHtml(v).replace(/`/g,'&#096;'); }
 function linkifyRules(text='') {
-  if(!text) return '';
-  const cacheKey=text.substring(0,100);
-  if(linkifyCache.has(cacheKey)) return linkifyCache.get(cacheKey);
   let out=escapeHtml(text); const book=getRuleBook(); if(!book) return out;
   for(const term of getRuleTerms()) {
     const results=book.search(term,{limit:3})||[];
@@ -589,34 +589,14 @@ function linkifyRules(text='') {
     const safe=String(term).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     out=out.replace(new RegExp(`(^|[^\\wÀ-ÿ])(${safe})(?=$|[^\\wÀ-ÿ])`,'gi'),(m,p,t)=>`${p}<button class="rule-term" type="button" data-rule-id="${exact.id}">${t}</button>`);
   }
-  if(linkifyCache.size>=LINKIFY_CACHE_MAX) linkifyCache.delete(linkifyCache.keys().next().value);
-  linkifyCache.set(cacheKey,out);
   return out;
 }
 let ruleHistory=[];
 let rulesSearchTimer=null;
-function ruleCategoryLabel(category){
- const book=getRuleBook();
- if(!book) return category || 'Regra';
- return book.categories?.[category] || category || 'Regra';
-}
+function ruleCategoryLabel(category){ return getRuleBook()?.categories?.[category] || category || 'Regra'; }
 function renderRulesPage(){
  const book=getRuleBook();
- if(!book) {
-  // Se o RuleBook ainda não está carregado, aguarda o evento
-  if(!window.rulebookReadyListener) {
-   window.rulebookReadyListener = true;
-   window.addEventListener('rulebook-ready', () => {
-    if(currentTab === 'regras') {
-     const mainContent = document.getElementById('main-content');
-     if(mainContent) mainContent.innerHTML = renderRulesPage();
-     renderRulesContext();
-     searchRules('');
-    }
-   });
-  }
-  return `<section class="rulebook-shell"><p class="rules-empty">Carregando Livro de Regras...</p></section>`;
- }
+ if(!book) return `<section class="rulebook-shell"><p class="rules-empty">Carregando Livro de Regras...</p></section>`;
  const categories=Object.entries(book.categories||{});
  const popular=['pr','rd','ressonancia','esquiva','congelado','imobilizado','vanguarda','combo'];
  return `<section class="rulebook-shell">
@@ -627,54 +607,30 @@ function renderRulesPage(){
    <div id="rules-results" class="rules-results"><p class="rules-empty">Pesquise um termo ou escolha uma categoria.</p></div>
  </section>`;
 }
-function scheduleRuleSearch(query){ clearTimeout(rulesSearchTimer); rulesSearchTimer=setTimeout(()=>searchRules(query),300); }
+function scheduleRuleSearch(query){ clearTimeout(rulesSearchTimer); rulesSearchTimer=setTimeout(()=>searchRules(query),180); }
 function searchRules(query='',options={}){
  const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
  const q=String(query).trim(); if(!q){box.innerHTML='<p class="rules-empty">Digite uma regra para pesquisar.</p>';return;}
- // Otimização: renderiza loading primeiro, depois faz a busca
- box.innerHTML='<p class="rules-empty">Pesquisando...</p>';
- setTimeout(()=>{
-  const results=book.search(q,{...options,limit:30})||[];
-  box.innerHTML=results.length?results.map(({rule})=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p><div class="rule-card-related">${book.getRelated(rule.id).slice(0,4).map(r=>`<span>${escapeHtml(r.title)}</span>`).join('')}</div>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join(''):'<p class="rules-empty">Nenhuma regra encontrada.</p>';
- },0);
+ const results=book.search(q,{...options,limit:30})||[];
+ box.innerHTML=results.length?results.map(({rule})=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p><div class="rule-card-related">${book.getRelated(rule.id).slice(0,4).map(r=>`<span>${escapeHtml(r.title)}</span>`).join('')}</div>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join(''):'<p class="rules-empty">Nenhuma regra encontrada.</p>';
 }
 function filterRulesCategory(category){
- const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book){
-  box.innerHTML='<p class="rules-empty">Carregando Livro de Regras...</p>';
-  return;
- }
- // Otimização: renderiza loading primeiro, depois faz a busca
- box.innerHTML='<p class="rules-empty">Carregando regras...</p>';
- setTimeout(()=>{
-  const rules=book.getByCategory(category)||[];
-  box.innerHTML=rules.map(rule=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join('')||'<p class="rules-empty">Nenhuma regra nesta categoria.</p>';
- },0);
+ const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
+ const rules=book.getByCategory(category)||[];
+ box.innerHTML=rules.map(rule=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join('')||'<p class="rules-empty">Nenhuma regra nesta categoria.</p>';
 }
 function openRuleById(id,push=true){
- const rule=getRule(id); if(!rule){
-  const main=document.getElementById('main-content');
-  if(main) main.innerHTML='<p class="opacity-60 text-center p-8">Livro de Regras ainda não carregado. Tente novamente em instantes.</p>';
-  return;
- }
+ const rule=getRule(id); if(!rule)return;
  if(push) ruleHistory.push(id);
  const main=document.getElementById('main-content'); if(!main)return;
- // Otimização: mostra loading primeiro
- main.innerHTML='<p class="opacity-60 text-center p-8">Carregando regra...</p>';
- setTimeout(()=>{
-  const book=getRuleBook();
-  if(!book){
-   main.innerHTML='<p class="opacity-60 text-center p-8">Livro de Regras ainda não carregado. Tente novamente em instantes.</p>';
-   return;
-  }
-  const related=book.getRelated(id)||[];
-  const section=(title,content)=>content&&content.length?`<section class="rule-section"><h3>${title}</h3>${content}</section>`:'';
-  // linkifyRules() já escapa o texto original e gera apenas os botões seguros
-  // dos termos registrados. Portanto, não devemos escapar novamente aqui.
-  const list=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
-  const meta=[['Elemento',rule.element],['Grau',rule.grade],['Tipo',rule.type],['Ação',rule.action],['Alcance',rule.range],['Duração',rule.duration],['Pré-requisito',rule.prerequisite]].filter(x=>x[1]);
-  main.innerHTML=`<section class="rule-detail"><div class="rule-breadcrumb"><button onclick="backFromRule()">← Voltar</button><span>Livro de Regras › ${escapeHtml(ruleCategoryLabel(rule.category))} › ${escapeHtml(rule.title)}</span></div><div class="rule-detail-head"><div><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><h1>${escapeHtml(rule.title)}</h1><p>${escapeHtml(rule.summary||'')}</p></div>${rule.status==='needs-review'?'<div class="rule-status-review">⚠ Regra pendente de revisão</div>':''}</div>${meta.length?`<div class="rule-meta">${meta.map(([k,v])=>`<span><b>${k}:</b> ${escapeHtml(v)}</span>`).join('')}</div>`:''}${section('Como funciona',rule.description&&`<p>${linkifyRules(rule.description)}</p>`)}${section('Mecânica',rule.mechanics?.length?list(rule.mechanics.map(linkifyRules)): '')}${section('Exemplos',rule.examples?.length?list(rule.examples.map(linkifyRules)):'')}${section('Tags',rule.tags?.length?`<div class="rule-tags">${rule.tags.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>`:'')}${related.length?`<section class="rule-section"><h3>Relacionado</h3><div class="rule-related-list">${related.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div></section>`:''}${rule.note?`<section class="rule-section rule-review-note"><h3>Observação</h3><p>${escapeHtml(rule.note)}</p></section>`:''}</section>`;
-  window.scrollTo({top:0,behavior:'smooth'});
- },0);
+ const book=getRuleBook(), related=book.getRelated(id)||[];
+ const section=(title,content)=>content&&content.length?`<section class="rule-section"><h3>${title}</h3>${content}</section>`:'';
+ // linkifyRules() já escapa o texto original e gera apenas os botões seguros
+ // dos termos registrados. Portanto, não devemos escapar novamente aqui.
+ const list=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+ const meta=[['Elemento',rule.element],['Grau',rule.grade],['Tipo',rule.type],['Ação',rule.action],['Alcance',rule.range],['Duração',rule.duration],['Pré-requisito',rule.prerequisite]].filter(x=>x[1]);
+ main.innerHTML=`<section class="rule-detail"><div class="rule-breadcrumb"><button onclick="backFromRule()">← Voltar</button><span>Livro de Regras › ${escapeHtml(ruleCategoryLabel(rule.category))} › ${escapeHtml(rule.title)}</span></div><div class="rule-detail-head"><div><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><h1>${escapeHtml(rule.title)}</h1><p>${escapeHtml(rule.summary||'')}</p></div>${rule.status==='needs-review'?'<div class="rule-status-review">⚠ Regra pendente de revisão</div>':''}</div>${meta.length?`<div class="rule-meta">${meta.map(([k,v])=>`<span><b>${k}:</b> ${escapeHtml(v)}</span>`).join('')}</div>`:''}${section('Como funciona',rule.description&&`<p>${linkifyRules(rule.description)}</p>`)}${section('Mecânica',rule.mechanics?.length?list(rule.mechanics.map(linkifyRules)): '')}${section('Exemplos',rule.examples?.length?list(rule.examples.map(linkifyRules)):'')}${section('Tags',rule.tags?.length?`<div class="rule-tags">${rule.tags.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>`:'')}${related.length?`<section class="rule-section"><h3>Relacionado</h3><div class="rule-related-list">${related.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div></section>`:''}${rule.note?`<section class="rule-section rule-review-note"><h3>Observação</h3><p>${escapeHtml(rule.note)}</p></section>`:''}</section>`;
+ window.scrollTo({top:0,behavior:'smooth'});
 }
 function openRuleModal(term){ const book=getRuleBook(); if(!book)return; const found=(book.search(term,{limit:1})||[])[0]?.rule; if(found) openRuleById(found.id); }
 function closeRuleModal(){}
@@ -753,8 +709,7 @@ function renderTab(tab) {
         const prevKey = getSkillKey(tab, path.skills[idx - 1].name);
         html += `<div class="path-line ${unlocked[prevKey] ? 'active' : ''}"></div>`;
       }
-      // Removido delay acumulativo de animação para mobile - usa delay fixo pequeno
-      html += renderSkillCard(skill, tab, idx > 3 ? 0 : idx * 50);
+      html += renderSkillCard(skill, tab, idx * 80);
     });
 
     html += `</div>`;
@@ -799,12 +754,7 @@ function renderAbilitiesHub() {
   ).join('');
   return `<section class="abilities-hub fade-in"><header class="section-hero"><div><span class="section-eyebrow">PROGRESSÃO</span><h2>🌳 Árvore de Habilidades</h2><p>Consulte e administre a progressão do personagem. Na ficha ficam apenas as habilidades já adquiridas.</p></div></header><div class="skill-element-nav">${buttons}</div><div id="skill-tree-content">${renderTab(currentSkillElement)}</div></section>`;
 }
-window.selectSkillElement = function(key){
-  currentSkillElement=key;
-  const main=document.getElementById('main-content');
-  main.innerHTML=renderAbilitiesHub();
-  if(window.lucide) lucide.createIcons();
-};
+window.selectSkillElement = function(key){ currentSkillElement=key; const main=document.getElementById('main-content'); main.innerHTML=renderAbilitiesHub(); if(window.lucide) lucide.createIcons(); };
 
 function switchTab(tab) {
   if (currentTab === 'personagem' && tab !== 'personagem' && isDirty) window.saveCharacterData({silent:true});
@@ -813,11 +763,7 @@ function switchTab(tab) {
   const mainContent = document.getElementById('main-content');
   document.body.dataset.section = tab;
   if (tab === 'regras') {
-    mainContent.innerHTML = renderRulesPage();
-    // Delay para garantir que o DOM esteja pronto antes de executar searchRules
-    setTimeout(() => {
-      searchRules('');
-    }, 100);
+    mainContent.innerHTML = renderRulesPage(); renderRulesContext(); searchRules('');
   } else if (tab === 'personagem') {
     mainContent.innerHTML = renderCharacterSheet(); if (window.lucide) window.lucide.createIcons();
   } else if (tab === 'habilidades') {
@@ -825,13 +771,332 @@ function switchTab(tab) {
   } else if (tab === 'combate') {
     loadCombatView();
   } else if (tab === 'mestre') {
-    mainContent.innerHTML = renderMasterHub();
+    loadMasterHub();
   }
 }
 
-function renderMasterHub(){
- return `<section class="master-hub fade-in"><header class="section-hero"><div><span class="section-eyebrow">FERRAMENTAS DO MESTRE</span><h2>⚙️ Mestre</h2><p>Atalhos administrativos sem poluir a navegação principal.</p></div></header><div class="master-actions"><button onclick="switchTab('combate')">⚔️ Gerenciar combate</button><button onclick="openCharacterPicker()">👥 Trocar personagem</button><button onclick="switchTab('regras');setTimeout(()=>showRuleCategory('review'),0)">📋 Consultar regras</button></div></section>`;
+function subscribeSessionPresence(profile) {
+  if (presenceChannel) supabaseClient.removeChannel(presenceChannel);
+  presenceChannel = supabaseClient.channel('elemento-frio-presence', {
+    config: { presence: { key: currentUser?.id || crypto.randomUUID() } }
+  });
+
+  presenceChannel.on('presence', { event: 'sync' }, () => {
+    const state = presenceChannel.presenceState();
+    onlineUserIds = new Set(
+      Object.values(state || {}).flat().map(item => item.user_id).filter(Boolean)
+    );
+    if (currentTab === 'mestre' && masterHubSection === 'session') {
+      const counter = document.querySelector('[data-master-online]');
+      if (counter) counter.textContent = String(masterPlayersCache.filter(p => onlineUserIds.has(p.user_id)).length);
+    }
+  });
+
+  presenceChannel.subscribe(async status => {
+    if (status === 'SUBSCRIBED') {
+      await presenceChannel.track({
+        user_id: currentUser.id,
+        username: profile?.username || currentUser.email,
+        role: profile?.role || 'player',
+        online_at: new Date().toISOString()
+      });
+    }
+  });
 }
+
+async function loadMasterHub(section = masterHubSection) {
+  if (currentRole !== 'admin') return;
+  masterHubSection = section;
+  const main = document.getElementById('main-content');
+  if (!main) return;
+  main.innerHTML = '<section class="master-center"><p class="rules-empty">Carregando central do mestre...</p></section>';
+  masterSetupWarnings = [];
+
+  const combatPromise = fetchCombatState();
+  const bestiaryPromise = supabaseClient.from('enemy_templates').select('*').order('name');
+  const notesPromise = supabaseClient.from('gm_notes').select('*').eq('owner_id', currentUser.id).maybeSingle();
+
+  const [combat, bestiaryRes, notesRes] = await Promise.all([combatPromise, bestiaryPromise, notesPromise]);
+  if (!combat.error) {
+    activeBattle = combat.battle;
+    battleEnemies = combat.enemies || [];
+    masterEnemiesCache = combat.enemies || [];
+    masterPlayersCache = combat.players || [];
+  } else {
+    masterSetupWarnings.push('Combate: ' + combat.error.message);
+  }
+
+  if (bestiaryRes.error) masterSetupWarnings.push('Bestiário: ' + bestiaryRes.error.message);
+  masterBestiaryCache = bestiaryRes.data || [];
+
+  if (notesRes.error) masterSetupWarnings.push('Notas: ' + notesRes.error.message);
+  masterNotesCache = notesRes.data?.content || '';
+
+  masterBattleLogCache = [];
+  if (activeBattle?.id) {
+    const logRes = await supabaseClient.from('battle_log').select('*').eq('battle_id', activeBattle.id).order('created_at', { ascending: false }).limit(30);
+    if (logRes.error) masterSetupWarnings.push('Histórico: ' + logRes.error.message);
+    else masterBattleLogCache = logRes.data || [];
+  }
+
+  if (currentTab !== 'mestre') return;
+  main.innerHTML = renderMasterHub();
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function renderMasterHub() {
+  const nav = [
+    ['session','Sessão'],
+    ['players','Personagens'],
+    ['bestiary','Inimigos'],
+    ['notes','Notas'],
+    ['rules','Regras rápidas']
+  ];
+  const content = masterHubSection === 'players' ? renderMasterPlayers()
+    : masterHubSection === 'bestiary' ? renderMasterBestiary()
+    : masterHubSection === 'notes' ? renderMasterNotes()
+    : masterHubSection === 'rules' ? renderMasterQuickRules()
+    : renderMasterSession();
+
+  return `<section class="master-center fade-in">
+    <header class="master-center-header">
+      <div><span class="section-eyebrow">CENTRAL DA SESSÃO</span><h2>⚙️ Mestre</h2><p>Prepare encontros, controle personagens e acompanhe a sessão sem sair desta área.</p></div>
+      ${activeBattle ? `<button class="primary-action" onclick="switchTab('combate')">Abrir combate →</button>` : `<button class="primary-action" onclick="startBattle();setTimeout(()=>loadMasterHub('session'),250)">+ Iniciar combate</button>`}
+    </header>
+    <nav class="master-center-nav">${nav.map(([id,label])=>`<button class="${masterHubSection===id?'active':''}" onclick="setMasterSection('${id}')">${label}</button>`).join('')}</nav>
+    ${masterSetupWarnings.length ? `<div class="master-warning"><strong>Configuração pendente</strong><span>Execute o SQL atualizado se algum módulo ainda não existir.</span></div>` : ''}
+    <div class="master-center-content">${content}</div>
+  </section>`;
+}
+
+function renderMasterSession() {
+  const online = masterPlayersCache.filter(p => onlineUserIds.has(p.user_id)).length;
+  const injured = masterPlayersCache.filter(p => (p.hp_current ?? 0) < (p.hp_max ?? 0)).length;
+  const playerConditions = masterPlayersCache.reduce((n,p)=>n+(Array.isArray(p.conditions)?p.conditions.length:0),0);
+  const enemyConditions = masterEnemiesCache.reduce((n,e)=>n+(Array.isArray(e.conditions)?e.conditions.length:0),0);
+  const turnOrder = Array.isArray(activeBattle?.turn_order) ? activeBattle.turn_order : [];
+  const turnIndex = Math.max(0, activeBattle?.turn_index || 0);
+  const currentTurn = turnOrder[turnIndex]?.label || activeBattle?.turn_label || '—';
+  return `<div class="master-dashboard-grid">
+    <section class="master-panel master-session-panel">
+      <div class="master-panel-head"><div><span class="section-eyebrow">SESSÃO ATUAL</span><h3>${activeBattle ? escapeHtml(activeBattle.name || 'Batalha') : 'Fora de combate'}</h3></div><span class="master-live-dot ${activeBattle?'on':''}">${activeBattle?'ATIVO':'INATIVO'}</span></div>
+      <div class="master-stat-grid">
+        <div><strong data-master-online>${online}</strong><span>online</span></div>
+        <div><strong>${masterPlayersCache.length}</strong><span>jogadores</span></div>
+        <div><strong>${activeBattle?.round || '—'}</strong><span>rodada</span></div>
+        <div><strong>${masterEnemiesCache.length}</strong><span>inimigos</span></div>
+        <div><strong>${injured}</strong><span>feridos</span></div>
+        <div><strong>${playerConditions + enemyConditions}</strong><span>condições</span></div>
+      </div>
+      ${activeBattle ? `<div class="master-turn-box"><span>Turno atual</span><strong>${escapeHtml(currentTurn)}</strong><div><button onclick="openInitiativeEditor()">Iniciativa</button><button onclick="advanceBattleTurn()">Próximo turno →</button></div></div>` : ''}
+      <div class="master-quick-actions">
+        <button onclick="switchTab('combate')">⚔️ Abrir combate</button>
+        <button onclick="setMasterSection('players')">👥 Personagens</button>
+        <button onclick="openBestiaryEditor()">＋ Criar inimigo</button>
+        <button onclick="setMasterSection('rules')">📖 Regras rápidas</button>
+      </div>
+    </section>
+
+    <section class="master-panel">
+      <div class="master-panel-head"><div><span class="section-eyebrow">ROLAGENS</span><h3>Dados rápidos</h3></div></div>
+      <div class="master-dice-row">${[20,12,10,8,6,4].map(d=>`<button onclick="rollMasterDie(${d})">d${d}</button>`).join('')}</div>
+      <div id="master-dice-result" class="master-dice-result"><span>Resultado</span><strong>—</strong></div>
+    </section>
+
+    <section class="master-panel master-preview-panel">
+      <div class="master-panel-head"><div><span class="section-eyebrow">PERSONAGENS</span><h3>Estado do grupo</h3></div><button onclick="setMasterSection('players')">Ver todos</button></div>
+      <div class="master-mini-list">${masterPlayersCache.slice(0,5).map(p=>`<button onclick="openMasterCharacter('${p.user_id}')"><span>${escapeHtml(p.name||'Sem nome')}</span><b>${p.hp_current??0}/${p.hp_max??0} PV</b></button>`).join('') || '<p>Nenhum personagem.</p>'}</div>
+    </section>
+
+    <section class="master-panel master-preview-panel">
+      <div class="master-panel-head"><div><span class="section-eyebrow">BESTIÁRIO</span><h3>Inimigos salvos</h3></div><button onclick="setMasterSection('bestiary')">Abrir</button></div>
+      <div class="master-mini-list">${masterBestiaryCache.slice(0,5).map(e=>`<button onclick="openBestiaryEditor('${e.id}')"><span>${escapeHtml(e.name)}</span><b>${e.hp_max} PV</b></button>`).join('') || '<p>Nenhum inimigo salvo.</p>'}</div>
+    </section>
+
+    <section class="master-panel master-preview-panel master-notes-preview">
+      <div class="master-panel-head"><div><span class="section-eyebrow">NOTAS</span><h3>Últimas anotações</h3></div><button onclick="setMasterSection('notes')">Editar</button></div>
+      <p>${escapeHtml(masterNotesCache.trim().slice(0,240) || 'Nenhuma nota de sessão ainda.')}</p>
+    </section>
+
+    <section class="master-panel master-log-panel">
+      <div class="master-panel-head"><div><span class="section-eyebrow">HISTÓRICO</span><h3>Últimos eventos</h3></div></div>
+      <div class="master-log-list">${masterBattleLogCache.slice(0,8).map(item=>`<div><time>${new Date(item.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</time><span>${escapeHtml(item.message)}</span></div>`).join('') || '<p>Nenhum evento registrado nesta batalha.</p>'}</div>
+    </section>
+  </div>`;
+}
+
+function renderMasterPlayers() {
+  const conditions = ['Lento','Caído','Imobilizado','Congelado','Sobrecarregado','Atordoado','Em Chamas','Encharcado'];
+  return `<section class="master-section-block"><div class="master-section-title"><div><span class="section-eyebrow">GRUPO</span><h3>Gerenciador de personagens</h3><p>Altere recursos e condições sem abrir ficha por ficha.</p></div><button onclick="openCharacterPicker()">Trocar ficha</button></div>
+    <div class="master-player-grid">${masterPlayersCache.map(p=>{
+      const conds=Array.isArray(p.conditions)?p.conditions:[];
+      return `<article class="master-player-card">
+        <div class="master-player-head"><div class="battle-avatar">${p.avatar_url?`<img src="${escapeAttr(p.avatar_url)}">`:escapeHtml((p.name||'?')[0])}</div><div><strong>${escapeHtml(p.name||'Sem nome')}</strong><small>${escapeHtml([p.class_name,p.archetype].filter(Boolean).join(' • '))}</small></div><b>NV ${p.level||1}</b></div>
+        <div class="master-player-resources"><span>PV <b>${p.hp_current??0}/${p.hp_max??0}</b></span><span>PD <b>${p.energy_current??0}/${p.energy_max??0}</b></span><span>PR <b>${p.resonance_points??3}</b></span><span>DEF <b>${p.defense??10}</b></span></div>
+        <div class="master-resource-actions"><button onclick="adjustMasterResource('${p.user_id}','hp',-10)">-10 PV</button><button onclick="adjustMasterResource('${p.user_id}','hp',10)">+10 PV</button><button onclick="adjustMasterResource('${p.user_id}','pd',-1)">-1 PD</button><button onclick="adjustMasterResource('${p.user_id}','pd',1)">+1 PD</button></div>
+        <div class="master-condition-list">${conds.map(c=>`<button title="Remover condição" onclick="removeMasterCondition('${p.user_id}','${escapeAttr(c)}')">${escapeHtml(c)} ×</button>`).join('') || '<span>Sem condições</span>'}</div>
+        <div class="master-condition-add"><select id="condition-${p.user_id}">${conditions.map(c=>`<option>${c}</option>`).join('')}</select><button onclick="addMasterCondition('${p.user_id}')">Aplicar</button></div>
+        <div class="master-card-actions"><button onclick="openMasterCharacter('${p.user_id}')">Abrir ficha</button><button onclick="openMasterSkills('${p.user_id}')">Ver habilidades</button></div>
+      </article>`;
+    }).join('') || '<p class="rules-empty">Nenhum personagem encontrado.</p>'}</div>
+  </section>`;
+}
+
+function renderMasterBestiary() {
+  return `<section class="master-section-block"><div class="master-section-title"><div><span class="section-eyebrow">BIBLIOTECA</span><h3>Bestiário / Inimigos</h3><p>Salve inimigos uma vez e reutilize em qualquer combate.</p></div><button class="primary-action" onclick="openBestiaryEditor()">+ Novo inimigo</button></div>
+    <div class="bestiary-grid">${masterBestiaryCache.map(e=>`<article class="bestiary-card"><div class="bestiary-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${escapeAttr(e.image_url)}">`:'👹'}</div><div><strong>${escapeHtml(e.name)}</strong><small>${escapeHtml(e.subtitle||'')}</small></div></div><div class="bestiary-stats"><span>PV <b>${e.hp_max}</b></span><span>DEF <b>${e.defense??10}</b></span><span>ESQ <b>${e.dodge??0}</b></span><span>DESL <b>${e.movement_speed??9}m</b></span></div>${e.conditions?.length?`<div class="condition-chips">${e.conditions.map(c=>`<button onclick="searchRulesFromContext('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}<div class="bestiary-actions"><button onclick="addTemplateToBattle('${e.id}')">+ Combate</button><button onclick="openBestiaryEditor('${e.id}')">Editar</button><button onclick="duplicateBestiary('${e.id}')">Duplicar</button><button class="danger-text" onclick="deleteBestiary('${e.id}')">Excluir</button></div></article>`).join('') || '<div class="combat-empty"><span>👹</span><h3>Bestiário vazio</h3><p>Crie o primeiro inimigo reutilizável.</p></div>'}</div>
+  </section>`;
+}
+
+function renderMasterNotes() {
+  return `<section class="master-section-block"><div class="master-section-title"><div><span class="section-eyebrow">PRIVADO</span><h3>Notas da sessão</h3><p>Somente sua conta de mestre consegue ler estas anotações.</p></div><span id="master-notes-status" class="master-note-status">Salvo</span></div><textarea id="master-notes-textarea" class="master-notes-textarea" placeholder="Pistas, segredos, lembretes, eventos futuros..." oninput="scheduleMasterNotesSave(this.value)">${escapeHtml(masterNotesCache)}</textarea></section>`;
+}
+
+function renderMasterQuickRules() {
+  const rules=['esquiva','contra-ataque','reducao-de-dano','ressonancia-elemental','pontos-de-ressonancia','caido','imobilizado','congelado','sobrecarregado','cobertura'];
+  const book=getRuleBook();
+  return `<section class="master-section-block"><div class="master-section-title"><div><span class="section-eyebrow">CONSULTA</span><h3>Regras rápidas</h3><p>Abra as mecânicas mais usadas durante a sessão.</p></div><button onclick="switchTab('regras')">Livro completo →</button></div><div class="master-rule-grid">${rules.map(id=>{const r=book?.getById(id);return r?`<button onclick="switchTab('regras');setTimeout(()=>openRuleById('${r.id}'),0)"><span>${escapeHtml(ruleCategoryLabel(r.category))}</span><strong>${escapeHtml(r.title)}</strong><small>${escapeHtml(r.summary||'')}</small></button>`:''}).join('')}</div></section>`;
+}
+
+window.setMasterSection = function(section){ masterHubSection=section; const main=document.getElementById('main-content'); if(main) main.innerHTML=renderMasterHub(); };
+window.rollMasterDie = function(sides){ const result=Math.floor(Math.random()*sides)+1; const box=document.getElementById('master-dice-result'); if(box) box.innerHTML=`<span>d${sides}</span><strong>${result}</strong>`; };
+window.openMasterCharacter = async function(userId){ selectedUserId=userId; const select=document.getElementById('player-select'); if(select) select.value=userId; dataReady=false; setSaveStatus('loading'); await loadSkills(); await loadCharacterData(); switchTab('personagem'); };
+window.openMasterSkills = async function(userId){ selectedUserId=userId; const select=document.getElementById('player-select'); if(select) select.value=userId; dataReady=false; setSaveStatus('loading'); await loadSkills(); await loadCharacterData(); switchTab('habilidades'); };
+
+async function logBattle(message, kind='info') {
+  if (!activeBattle?.id || currentRole!=='admin') return;
+  const {error}=await supabaseClient.from('battle_log').insert({battle_id:activeBattle.id,message,kind,created_by:currentUser.id});
+  if(error && !String(error.message).includes('battle_log')) console.warn('Histórico:',error.message);
+}
+
+window.adjustMasterResource = async function(userId, resource, delta){
+  const {data,error}=await supabaseClient.rpc('master_adjust_character',{p_user_id:userId,p_resource:resource,p_delta:delta});
+  if(error){alert('Não foi possível alterar o recurso. Execute o SQL atualizado.\n'+error.message);return;}
+  const player=masterPlayersCache.find(p=>p.user_id===userId); const name=player?.name||'Personagem';
+  await logBattle(`${name}: ${delta>0?'+':''}${delta} ${resource==='hp'?'PV':'PD'}`,'resource');
+  await loadMasterHub('players');
+};
+
+window.addMasterCondition = async function(userId){ const select=document.getElementById('condition-'+userId); if(!select)return; const player=masterPlayersCache.find(p=>p.user_id===userId); const list=[...(player?.conditions||[])]; if(!list.includes(select.value)) list.push(select.value); await saveMasterConditions(userId,list,`${player?.name||'Personagem'} recebeu ${select.value}`); };
+window.removeMasterCondition = async function(userId,condition){ const player=masterPlayersCache.find(p=>p.user_id===userId); const list=(player?.conditions||[]).filter(c=>c!==condition); await saveMasterConditions(userId,list,`${player?.name||'Personagem'} removeu ${condition}`); };
+async function saveMasterConditions(userId,list,log){ const {error}=await supabaseClient.rpc('master_set_character_conditions',{p_user_id:userId,p_conditions:list}); if(error){alert('Não foi possível alterar condições. Execute o SQL atualizado.\n'+error.message);return;} await logBattle(log,'condition'); await loadMasterHub('players'); }
+
+window.scheduleMasterNotesSave=function(value){ masterNotesCache=value; const status=document.getElementById('master-notes-status'); if(status)status.textContent='Salvando...'; clearTimeout(masterNotesTimer); masterNotesTimer=setTimeout(()=>saveMasterNotes(value),650); };
+async function saveMasterNotes(value){ const {error}=await supabaseClient.from('gm_notes').upsert({owner_id:currentUser.id,content:value,updated_at:new Date().toISOString()},{onConflict:'owner_id'}); const status=document.getElementById('master-notes-status'); if(error){if(status)status.textContent='Erro ao salvar';console.error(error);return;} if(status)status.textContent='Salvo'; }
+
+window.openBestiaryEditor=function(id=''){
+  const e=masterBestiaryCache.find(x=>x.id===id)||{visibility:{name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true},conditions:[],attacks:[],abilities:[]};
+  document.getElementById('bestiary-editor')?.remove();
+  document.body.insertAdjacentHTML('beforeend',`<div id="bestiary-editor" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('bestiary-editor').remove()"></button><form class="picker-panel bestiary-editor" onsubmit="saveBestiary(event,'${id}')"><div class="picker-head"><div><span class="section-eyebrow">BESTIÁRIO</span><h3>${id?'Editar':'Novo'} inimigo</h3></div><button type="button" onclick="document.getElementById('bestiary-editor').remove()">✕</button></div><label>Nome<input name="name" required value="${escapeAttr(e.name||'')}"></label><label>Subtítulo<input name="subtitle" value="${escapeAttr(e.subtitle||'')}"></label><label>URL da imagem<input name="image_url" value="${escapeAttr(e.image_url||'')}"></label><div class="enemy-form-grid"><label>PV máximo<input name="hp_max" type="number" value="${e.hp_max??10}"></label><label>Defesa<input name="defense" type="number" value="${e.defense??10}"></label><label>Esquiva<input name="dodge" type="number" value="${e.dodge??0}"></label><label>Bloqueio<input name="block" type="number" value="${e.block??0}"></label><label>Deslocamento<input name="movement_speed" type="number" step="0.5" value="${e.movement_speed??9}"></label></div><label>Condições padrão (vírgula)<input name="conditions" value="${escapeAttr((e.conditions||[]).join(', '))}"></label><label>Ataques (um por linha)<textarea name="attacks">${escapeHtml((e.attacks||[]).join('\n'))}</textarea></label><label>Habilidades (uma por linha)<textarea name="abilities">${escapeHtml((e.abilities||[]).join('\n'))}</textarea></label><label>Notas privadas<textarea name="notes">${escapeHtml(e.notes||'')}</textarea></label><fieldset><legend>Visível para jogadores</legend>${[['name','Nome'],['hp','Barra de PV'],['hp_numbers','PV numérico'],['conditions','Condições'],['defense','Defesa'],['dodge','Esquiva'],['block','Bloqueio'],['movement','Deslocamento']].map(([k,l])=>`<label class="check-row"><input type="checkbox" name="vis_${k}" ${e.visibility?.[k]!==false?'checked':''}> ${l}</label>`).join('')}</fieldset><button class="primary-action" type="submit">Salvar no bestiário</button></form></div>`);
+};
+
+window.saveBestiary=async function(ev,id){ ev.preventDefault(); const f=new FormData(ev.target),visibility={}; ['name','hp','hp_numbers','conditions','defense','dodge','block','movement'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on'); const lines=name=>String(f.get(name)||'').split('\n').map(x=>x.trim()).filter(Boolean); const payload={owner_id:currentUser.id,name:f.get('name')||'Inimigo',subtitle:f.get('subtitle')||'',image_url:f.get('image_url')||'',hp_max:+f.get('hp_max')||1,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),attacks:lines('attacks'),abilities:lines('abilities'),notes:f.get('notes')||'',visibility}; const q=id?supabaseClient.from('enemy_templates').update(payload).eq('id',id):supabaseClient.from('enemy_templates').insert(payload); const {error}=await q; if(error){alert('Erro ao salvar bestiário. Execute o SQL atualizado.\n'+error.message);return;} document.getElementById('bestiary-editor')?.remove(); await loadMasterHub('bestiary'); };
+window.deleteBestiary=async function(id){if(!confirm('Excluir este inimigo do bestiário?'))return;const {error}=await supabaseClient.from('enemy_templates').delete().eq('id',id);if(error)alert(error.message);else loadMasterHub('bestiary');};
+window.duplicateBestiary=async function(id){const e=masterBestiaryCache.find(x=>x.id===id);if(!e)return;const {id:_id,created_at,_created,updated_at,_updated,...copy}=e;copy.name=(e.name||'Inimigo')+' (Cópia)';copy.owner_id=currentUser.id;const {error}=await supabaseClient.from('enemy_templates').insert(copy);if(error)alert(error.message);else loadMasterHub('bestiary');};
+window.addTemplateToBattle=async function(id){let battle=activeBattle;if(!battle){const state=await fetchCombatState();battle=state.battle;activeBattle=battle;}if(!battle){alert('Inicie um combate antes de adicionar inimigos.');return;}const e=masterBestiaryCache.find(x=>x.id===id);if(!e)return;const payload={battle_id:battle.id,name:e.name,subtitle:e.subtitle,image_url:e.image_url,hp_current:e.hp_max,hp_max:e.hp_max,defense:e.defense,dodge:e.dodge,block:e.block,movement_speed:e.movement_speed,conditions:e.conditions||[],attacks:e.attacks||[],abilities:e.abilities||[],notes:e.notes||'',visibility:e.visibility||{}};const {error}=await supabaseClient.from('battle_enemies').insert(payload);if(error){alert(error.message);return;}await logBattle(`${e.name} foi adicionado ao combate`,'enemy');await loadMasterHub('bestiary');};
+
+
+async function ensureBestiaryLoaded(){
+  if(masterBestiaryCache.length) return true;
+  const {data,error}=await supabaseClient.from('enemy_templates').select('*').order('name');
+  if(error){
+    alert('Não foi possível carregar o bestiário.\n'+error.message);
+    return false;
+  }
+  masterBestiaryCache=data||[];
+  return true;
+}
+
+window.openBattleBestiaryPicker=async function(){
+  if(currentRole!=='admin') return;
+  let battle=activeBattle;
+  if(!battle){
+    const state=await fetchCombatState();
+    battle=state.battle;
+    activeBattle=battle;
+  }
+  if(!battle){
+    alert('Inicie um combate antes de adicionar inimigos do bestiário.');
+    return;
+  }
+  if(!(await ensureBestiaryLoaded())) return;
+
+  document.getElementById('battle-bestiary-picker')?.remove();
+  const rows=masterBestiaryCache.map(e=>`
+    <article class="battle-bestiary-row" data-bestiary-search="${escapeAttr([e.name,e.subtitle].filter(Boolean).join(' ')).toLowerCase()}">
+      <div class="battle-avatar enemy">${e.image_url?`<img src="${escapeAttr(e.image_url)}" alt="">`:'👹'}</div>
+      <div class="battle-bestiary-info">
+        <strong>${escapeHtml(e.name||'Inimigo')}</strong>
+        <small>${escapeHtml(e.subtitle||'')}</small>
+        <div class="battle-bestiary-stats"><span>PV ${e.hp_max??0}</span><span>DEF ${e.defense??10}</span><span>ESQ ${e.dodge??0}</span><span>DESL ${e.movement_speed??9}m</span></div>
+      </div>
+      <button class="primary-action" type="button" onclick="addTemplateToActiveBattle('${e.id}', this)">+ Adicionar</button>
+    </article>`).join('');
+
+  document.body.insertAdjacentHTML('beforeend',`
+    <div id="battle-bestiary-picker" class="picker-modal">
+      <button class="picker-backdrop" onclick="closeBattleBestiaryPicker()"></button>
+      <div class="picker-panel battle-bestiary-picker-panel">
+        <div class="picker-head">
+          <div><span class="section-eyebrow">BESTIÁRIO</span><h3>Adicionar ao combate</h3><small>Escolha um inimigo salvo para criar uma cópia nesta batalha.</small></div>
+          <button type="button" onclick="closeBattleBestiaryPicker()">✕</button>
+        </div>
+        <div class="picker-search"><input id="battle-bestiary-search" placeholder="Pesquisar inimigo..." oninput="filterBattleBestiary(this.value)"></div>
+        <div class="battle-bestiary-list">${rows||'<div class="combat-empty"><span>👹</span><h3>Bestiário vazio</h3><p>Crie inimigos na Central do Mestre primeiro.</p></div>'}</div>
+      </div>
+    </div>`);
+};
+
+window.closeBattleBestiaryPicker=function(){document.getElementById('battle-bestiary-picker')?.remove();};
+window.filterBattleBestiary=function(query=''){
+  const q=String(query).trim().toLocaleLowerCase('pt-BR');
+  document.querySelectorAll('#battle-bestiary-picker .battle-bestiary-row').forEach(row=>{
+    row.hidden=q&&!String(row.dataset.bestiarySearch||'').includes(q);
+  });
+};
+
+window.addTemplateToActiveBattle=async function(id,button){
+  if(button){button.disabled=true;button.textContent='Adicionando...';}
+  try{
+    let battle=activeBattle;
+    if(!battle){
+      const state=await fetchCombatState();
+      battle=state.battle;
+      activeBattle=battle;
+    }
+    if(!battle){alert('Não existe combate ativo.');return;}
+    if(!(await ensureBestiaryLoaded())) return;
+    const e=masterBestiaryCache.find(x=>String(x.id)===String(id));
+    if(!e){alert('Inimigo não encontrado no bestiário.');return;}
+    const visibility={name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true,attacks:false,abilities:false,...(e.visibility||{})};
+    const payload={battle_id:battle.id,name:e.name||'Inimigo',subtitle:e.subtitle||'',image_url:e.image_url||'',hp_current:e.hp_max??10,hp_max:e.hp_max??10,defense:e.defense??10,dodge:e.dodge??0,block:e.block??0,movement_speed:e.movement_speed??9,conditions:Array.isArray(e.conditions)?e.conditions:[],attacks:Array.isArray(e.attacks)?e.attacks:[],abilities:Array.isArray(e.abilities)?e.abilities:[],notes:e.notes||'',visibility};
+    const {error}=await supabaseClient.from('battle_enemies').insert(payload);
+    if(error){alert('Erro ao adicionar ao combate.\n'+error.message);return;}
+    await logBattle(`${e.name||'Inimigo'} foi adicionado ao combate`,'enemy');
+    scheduleCombatSync(50);
+    if(button){button.textContent='✓ Adicionado';setTimeout(()=>{if(button){button.disabled=false;button.textContent='+ Adicionar';}},900);}
+  }finally{
+    if(button&&button.textContent==='Adicionando...'){button.disabled=false;button.textContent='+ Adicionar';}
+  }
+};
+
+window.openInitiativeEditor=function(){
+  if(!activeBattle){alert('Nenhum combate ativo.');return;}
+  const current=Array.isArray(activeBattle.turn_order)?activeBattle.turn_order:[];
+  const currentMap=new Map(current.map(x=>[`${x.type}:${x.id}`,x.initiative]));
+  // Na tela de Combate usamos os dados que já estão carregados ali. Na Central
+  // do Mestre mantemos o fallback para os caches administrativos.
+  const playerSource=(currentTab==='combate'&&combatPlayersCache.length)?combatPlayersCache:masterPlayersCache;
+  const enemySource=(currentTab==='combate'&&battleEnemies.length)?battleEnemies:masterEnemiesCache;
+  const entities=[
+    ...playerSource.map(p=>({type:'player',id:p.user_id,label:p.name||'Personagem'})),
+    ...enemySource.map(e=>({type:'enemy',id:e.id,label:e.name||'Inimigo'}))
+  ];
+  document.getElementById('initiative-editor')?.remove();
+  document.body.insertAdjacentHTML('beforeend',`<div id="initiative-editor" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('initiative-editor').remove()"></button><form class="picker-panel initiative-editor" onsubmit="saveInitiative(event)"><div class="picker-head"><div><span class="section-eyebrow">COMBATE</span><h3>Ordem de iniciativa</h3><small>Defina os valores. A ordem é organizada automaticamente do maior para o menor.</small></div><button type="button" onclick="document.getElementById('initiative-editor').remove()">✕</button></div><div class="initiative-list">${entities.map(x=>`<label><span>${escapeHtml(x.label)} <small>${x.type==='player'?'Jogador':'Inimigo'}</small></span><input type="number" inputmode="numeric" name="init" data-type="${x.type}" data-id="${x.id}" data-label="${escapeAttr(x.label)}" value="${currentMap.get(`${x.type}:${x.id}`)??0}"></label>`).join('')}</div><button class="primary-action" type="submit">Salvar e ordenar</button></form></div>`);
+};
+window.saveInitiative=async function(ev){ev.preventDefault();const order=[...ev.target.querySelectorAll('input[name="init"]')].map(i=>({type:i.dataset.type,id:i.dataset.id,label:i.dataset.label,initiative:+i.value||0})).sort((a,b)=>b.initiative-a.initiative||String(a.label).localeCompare(String(b.label),'pt-BR'));const first=order[0]?.label||null;const {error}=await supabaseClient.from('battles').update({turn_order:order,turn_index:0,turn_label:first}).eq('id',activeBattle.id);if(error){alert(error.message);return;}document.getElementById('initiative-editor')?.remove();await logBattle('Ordem de iniciativa atualizada','initiative');if(currentTab==='combate')scheduleCombatSync(40);else await loadMasterHub('session');};
+window.advanceBattleTurn=async function(){if(!activeBattle)return;const order=Array.isArray(activeBattle.turn_order)?activeBattle.turn_order:[];if(!order.length){openInitiativeEditor();return;}let next=(activeBattle.turn_index||0)+1;let round=activeBattle.round||1;if(next>=order.length){next=0;round+=1;}const label=order[next]?.label||null;const {error}=await supabaseClient.from('battles').update({turn_index:next,turn_label:label,round}).eq('id',activeBattle.id);if(error){alert(error.message);return;}await logBattle(`Turno: ${label}${next===0?` • Rodada ${round}`:''}`,'turn');if(currentTab==='combate')scheduleCombatSync(40);else await loadMasterHub('session');};
 
 // --- Escudo do Mestre ---
 // Mostra, numa única tela, um resumo de todos os jogadores para o mestre
@@ -1003,6 +1268,38 @@ function patchCardCollection(containerSelector, items, idKey, renderFn, attrName
   if(!items.length && emptyHtml && !container.querySelector('.combat-placeholder')) container.innerHTML=emptyHtml;
 }
 
+function renderCombatInitiative(){
+  const order=Array.isArray(activeBattle?.turn_order)?activeBattle.turn_order:[];
+  const currentIndex=Math.max(0,Math.min(order.length-1,activeBattle?.turn_index||0));
+  if(!order.length){
+    return `<section class="combat-initiative" data-initiative-section><div class="combat-initiative-head"><div><span class="section-eyebrow">ORDEM DE TURNO</span><h3>Iniciativa</h3><p>Nenhuma iniciativa definida.</p></div>${currentRole==='admin'?`<button class="primary-action" onclick="openInitiativeEditor()">+ Definir iniciativa</button>`:''}</div>${currentRole!=='admin'?'<p class="combat-initiative-empty">Aguardando o mestre definir a ordem da batalha.</p>':''}</section>`;
+  }
+  return `<section class="combat-initiative" data-initiative-section>
+    <div class="combat-initiative-head">
+      <div><span class="section-eyebrow">ORDEM DE TURNO</span><h3>Iniciativa</h3><p>${order.length} participantes • Rodada ${activeBattle?.round||1}</p></div>
+      ${currentRole==='admin'?`<div class="combat-initiative-actions"><button onclick="openInitiativeEditor()">Editar</button><button class="primary-action" onclick="advanceBattleTurn()">Próximo turno →</button></div>`:''}
+    </div>
+    <div class="combat-initiative-order">
+      ${order.map((item,index)=>`<div class="initiative-order-item ${index===currentIndex?'current':''}" data-initiative-id="${escapeAttr(item.type+':'+item.id)}">
+        <span class="initiative-position">${index+1}</span>
+        <span class="initiative-entity-icon">${item.type==='player'?'👤':'👹'}</span>
+        <div class="initiative-entity"><strong>${escapeHtml(item.label||'Participante')}</strong><small>${item.type==='player'?'Jogador':'Inimigo'}</small></div>
+        <b class="initiative-value">${Number(item.initiative)||0}</b>
+        ${index===currentIndex?'<span class="initiative-turn-badge">AGINDO</span>':''}
+      </div>`).join('')}
+    </div>
+  </section>`;
+}
+
+function patchCombatInitiative(){
+  const current=document.querySelector('[data-initiative-section]');
+  if(!current)return;
+  const holder=document.createElement('div');
+  holder.innerHTML=renderCombatInitiative().trim();
+  const next=holder.firstElementChild;
+  if(next && current.outerHTML!==next.outerHTML) current.replaceWith(next);
+}
+
 async function syncCombatIncrementally(){
   const state=await fetchCombatState();
   if(state.error || currentTab!=='combate') return;
@@ -1020,6 +1317,7 @@ async function syncCombatIncrementally(){
   combatPlayersCache=state.players;
   if(!activeBattle) return;
   patchCombatHeader();
+  patchCombatInitiative();
   const allyCount=document.querySelector('[data-ally-count]');
   if(allyCount) allyCount.textContent=`${combatPlayersCache.length} personagens`;
   patchCardCollection('.battle-allies', combatPlayersCache, 'user_id', renderBattlePlayerCard, 'data-player-id');
@@ -1030,16 +1328,16 @@ function renderCombatSetupNotice(error){return `<section class="combat-shell"><d
 function renderCombat(players){
  if(!activeBattle) return `<section class="combat-shell fade-in"><header class="combat-header"><div><span class="section-eyebrow">SESSÃO</span><h2>⚔️ Combate</h2><p>Nenhum combate ativo.</p></div>${currentRole==='admin'?`<button class="primary-action" onclick="startBattle()">+ Iniciar combate</button>`:''}</header><div class="combat-empty"><span>⚔️</span><h3>A mesa está fora de combate</h3><p>Quando o mestre iniciar uma batalha, aliados e inimigos aparecerão aqui em tempo real.</p></div></section>`;
  const allies=players.map(renderBattlePlayerCard).join(''); const enemies=battleEnemies.map(renderEnemyCard).join('')||'<p class="combat-placeholder">Nenhum inimigo adicionado.</p>';
- return `<section class="combat-shell fade-in"><header class="combat-header"><div><span class="section-eyebrow">BATALHA ATIVA</span><h2 data-combat-title>⚔️ ${escapeHtml(activeBattle.name||'Combate')}</h2><p data-combat-meta>Rodada ${activeBattle.round||1}${activeBattle.turn_label?' • Turno: '+escapeHtml(activeBattle.turn_label):''}</p></div>${currentRole==='admin'?`<div class="combat-admin-actions"><button onclick="advanceRound()">+ Rodada</button><button class="danger-action" onclick="endBattle()">Encerrar</button></div>`:''}</header><div class="combat-section-head"><h3>Aliados</h3><span data-ally-count>${players.length} personagens</span></div><div class="battle-allies">${allies}</div><div class="combat-section-head"><h3>Inimigos</h3>${currentRole==='admin'?`<button onclick="openEnemyEditor()">+ Adicionar inimigo</button>`:''}</div><div class="battle-enemies">${enemies}</div></section>`;
+ return `<section class="combat-shell fade-in"><header class="combat-header"><div><span class="section-eyebrow">BATALHA ATIVA</span><h2 data-combat-title>⚔️ ${escapeHtml(activeBattle.name||'Combate')}</h2><p data-combat-meta>Rodada ${activeBattle.round||1}${activeBattle.turn_label?' • Turno: '+escapeHtml(activeBattle.turn_label):''}</p></div>${currentRole==='admin'?`<div class="combat-admin-actions"><button onclick="advanceRound()">+ Rodada</button><button class="danger-action" onclick="endBattle()">Encerrar</button></div>`:''}</header>${renderCombatInitiative()}<div class="combat-section-head"><h3>Aliados</h3><span data-ally-count>${players.length} personagens</span></div><div class="battle-allies">${allies}</div><div class="combat-section-head"><h3>Inimigos</h3>${currentRole==='admin'?`<div class="combat-enemy-actions"><button onclick="openBattleBestiaryPicker()">📚 Do bestiário</button><button onclick="openEnemyEditor()">+ Criar manualmente</button></div>`:''}</div><div class="battle-enemies">${enemies}</div></section>`;
 }
-function renderBattlePlayerCard(pl){const hpMax=pl.hp_max||1,hp=Math.max(0,Math.min(100,Math.round((pl.hp_current||0)/hpMax*100))),pdMax=pl.energy_max||1,pd=Math.max(0,Math.min(100,Math.round((pl.energy_current||0)/pdMax*100)));return `<article class="battle-card ally-card" data-player-id="${escapeHtml(pl.user_id||'')}"><div class="battle-card-head"><div class="battle-avatar">${pl.avatar_url?`<img src="${pl.avatar_url}">`:escapeHtml((pl.name||'?')[0])}</div><div><strong>${escapeHtml(pl.name||'Sem nome')}</strong><small>${escapeHtml([pl.class_name,pl.archetype].filter(Boolean).join(' • '))}</small></div><b>NV ${pl.level||1}</b></div><div class="battle-resource"><span>PV</span><div><i style="width:${hp}%"></i></div><b>${pl.hp_current||0}/${pl.hp_max||0}</b></div><div class="battle-resource pd"><span>PD</span><div><i style="width:${pd}%"></i></div><b>${pl.energy_current||0}/${pl.energy_max||0}</b></div><div class="battle-stats"><span>DEF <b>${pl.defense??10}</b></span><span>ESQ <b>${pl.dodge??0}</b></span><span>BLOQ <b>${pl.block??0}</b></span><span>DESL <b>${pl.movement_speed??9}m</b></span></div>${currentRole==='admin'?`<button class="card-link" onclick="selectCharacterFromPicker('${pl.user_id}');setTimeout(()=>switchTab('personagem'),100)">Abrir ficha →</button>`:''}</article>`}
+function renderBattlePlayerCard(pl){const hpMax=pl.hp_max||1,hp=Math.max(0,Math.min(100,Math.round((pl.hp_current||0)/hpMax*100))),pdMax=pl.energy_max||1,pd=Math.max(0,Math.min(100,Math.round((pl.energy_current||0)/pdMax*100))),conds=Array.isArray(pl.conditions)?pl.conditions:[];return `<article class="battle-card ally-card" data-player-id="${escapeHtml(pl.user_id||'')}"><div class="battle-card-head"><div class="battle-avatar">${pl.avatar_url?`<img src="${pl.avatar_url}">`:escapeHtml((pl.name||'?')[0])}</div><div><strong>${escapeHtml(pl.name||'Sem nome')}</strong><small>${escapeHtml([pl.class_name,pl.archetype].filter(Boolean).join(' • '))}</small></div><b>NV ${pl.level||1}</b></div><div class="battle-resource"><span>PV</span><div><i style="width:${hp}%"></i></div><b>${pl.hp_current||0}/${pl.hp_max||0}</b></div><div class="battle-resource pd"><span>PD</span><div><i style="width:${pd}%"></i></div><b>${pl.energy_current||0}/${pl.energy_max||0}</b></div><div class="battle-stats"><span>DEF <b>${pl.defense??10}</b></span><span>ESQ <b>${pl.dodge??0}</b></span><span>BLOQ <b>${pl.block??0}</b></span><span>DESL <b>${pl.movement_speed??9}m</b></span></div>${conds.length?`<div class="condition-chips">${conds.map(c=>`<button onclick="searchRulesFromContext('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}${currentRole==='admin'?`<button class="card-link" onclick="selectCharacterFromPicker('${pl.user_id}');setTimeout(()=>switchTab('personagem'),100)">Abrir ficha →</button>`:''}</article>`}
 function enemyVisible(e,key){return currentRole==='admin'||(e.visibility||{})[key]!==false}
-function renderEnemyCard(e){const max=e.hp_max||1,pct=Math.max(0,Math.min(100,Math.round((e.hp_current||0)/max*100))),v=e.visibility||{};return `<article class="battle-card enemy-card" data-enemy-id="${escapeHtml(e.id||'')}"><div class="battle-card-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${e.image_url}">`:'👹'}</div><div><strong>${enemyVisible(e,'name')?escapeHtml(e.name||'Inimigo'):'Inimigo desconhecido'}</strong><small>${escapeHtml(e.subtitle||'')}</small></div>${currentRole==='admin'?`<button class="icon-action" onclick="openEnemyEditor('${e.id}')">✎</button>`:''}</div>${enemyVisible(e,'hp')?`<div class="battle-resource enemy-hp"><span>PV</span><div><i style="width:${pct}%"></i></div><b>${enemyVisible(e,'hp_numbers')?`${e.hp_current||0}/${e.hp_max||0}`:'?'}</b></div>`:''}<div class="battle-stats">${enemyVisible(e,'defense')?`<span>DEF <b>${e.defense??10}</b></span>`:''}${enemyVisible(e,'dodge')?`<span>ESQ <b>${e.dodge??0}</b></span>`:''}${enemyVisible(e,'block')?`<span>BLOQ <b>${e.block??0}</b></span>`:''}${enemyVisible(e,'movement')?`<span>DESL <b>${e.movement_speed??9}m</b></span>`:''}</div>${enemyVisible(e,'conditions')&&e.conditions?.length?`<div class="condition-chips">${e.conditions.map(c=>`<button onclick="searchRulesFromContext('${escapeHtml(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}${currentRole==='admin'?`<div class="enemy-quick"><button onclick="changeEnemyHp('${e.id}',-1)">−1 PV</button><button onclick="changeEnemyHp('${e.id}',1)">+1 PV</button></div>`:''}</article>`}
+function renderEnemyCard(e){const max=e.hp_max||1,pct=Math.max(0,Math.min(100,Math.round((e.hp_current||0)/max*100))),v=e.visibility||{},attacks=Array.isArray(e.attacks)?e.attacks:[],abilities=Array.isArray(e.abilities)?e.abilities:[];return `<article class="battle-card enemy-card" data-enemy-id="${escapeHtml(e.id||'')}"><div class="battle-card-head"><div class="battle-avatar enemy">${e.image_url?`<img src="${e.image_url}">`:'👹'}</div><div><strong>${enemyVisible(e,'name')?escapeHtml(e.name||'Inimigo'):'Inimigo desconhecido'}</strong><small>${escapeHtml(e.subtitle||'')}</small></div>${currentRole==='admin'?`<button class="icon-action" onclick="openEnemyEditor('${e.id}')">✎</button>`:''}</div>${enemyVisible(e,'hp')?`<div class="battle-resource enemy-hp"><span>PV</span><div><i style="width:${pct}%"></i></div><b>${enemyVisible(e,'hp_numbers')?`${e.hp_current||0}/${e.hp_max||0}`:'?'}</b></div>`:''}<div class="battle-stats">${enemyVisible(e,'defense')?`<span>DEF <b>${e.defense??10}</b></span>`:''}${enemyVisible(e,'dodge')?`<span>ESQ <b>${e.dodge??0}</b></span>`:''}${enemyVisible(e,'block')?`<span>BLOQ <b>${e.block??0}</b></span>`:''}${enemyVisible(e,'movement')?`<span>DESL <b>${e.movement_speed??9}m</b></span>`:''}</div>${enemyVisible(e,'conditions')&&e.conditions?.length?`<div class="condition-chips">${e.conditions.map(c=>`<button onclick="searchRulesFromContext('${escapeAttr(c)}')">${escapeHtml(c)}</button>`).join('')}</div>`:''}${enemyVisible(e,'attacks')&&attacks.length?`<div class="enemy-public-info"><strong>Ataques</strong>${attacks.map(a=>`<span>${escapeHtml(a)}</span>`).join('')}</div>`:''}${enemyVisible(e,'abilities')&&abilities.length?`<div class="enemy-public-info"><strong>Habilidades</strong>${abilities.map(a=>`<span>${escapeHtml(a)}</span>`).join('')}</div>`:''}${currentRole==='admin'?`<div class="enemy-quick"><button onclick="changeEnemyHp('${e.id}',-1)">−1 PV</button><button onclick="changeEnemyHp('${e.id}',1)">+1 PV</button></div>`:''}</article>`}
 async function startBattle(){if(currentRole!=='admin')return;const name=prompt('Nome do combate:','Batalha');if(name===null)return;await supabaseClient.from('battles').update({active:false}).eq('active',true);const {error}=await supabaseClient.from('battles').insert({name:name||'Batalha',active:true,round:1,created_by:currentUser.id});if(error)alert(error.message);else scheduleCombatSync(50)}
 async function endBattle(){if(!confirm('Encerrar o combate atual?'))return;await supabaseClient.from('battles').update({active:false}).eq('id',activeBattle.id);scheduleCombatSync(50)}
 async function advanceRound(){await supabaseClient.from('battles').update({round:(activeBattle.round||1)+1}).eq('id',activeBattle.id);}
-function openEnemyEditor(id){const e=battleEnemies.find(x=>x.id===id)||{visibility:{name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true},conditions:[]};document.body.insertAdjacentHTML('beforeend',`<div id="enemy-editor" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('enemy-editor').remove()"></button><form class="picker-panel enemy-editor" onsubmit="saveEnemy(event,'${id||''}')"><div class="picker-head"><div><span class="section-eyebrow">INIMIGO</span><h3>${id?'Editar':'Adicionar'} inimigo</h3></div><button type="button" onclick="document.getElementById('enemy-editor').remove()">✕</button></div><label>Nome<input name="name" value="${escapeHtml(e.name||'')}"></label><div class="enemy-form-grid"><label>PV atual<input name="hp_current" type="number" value="${e.hp_current??10}"></label><label>PV máximo<input name="hp_max" type="number" value="${e.hp_max??10}"></label><label>Defesa<input name="defense" type="number" value="${e.defense??10}"></label><label>Esquiva<input name="dodge" type="number" value="${e.dodge??0}"></label><label>Bloqueio<input name="block" type="number" value="${e.block??0}"></label><label>Deslocamento<input name="movement_speed" type="number" value="${e.movement_speed??9}"></label></div><label>Condições (separadas por vírgula)<input name="conditions" value="${escapeHtml((e.conditions||[]).join(', '))}"></label><fieldset><legend>Visível para jogadores</legend>${[['name','Nome'],['hp','Barra de PV'],['hp_numbers','PV numérico'],['conditions','Condições'],['defense','Defesa'],['dodge','Esquiva'],['block','Bloqueio'],['movement','Deslocamento']].map(([k,l])=>`<label class="check-row"><input type="checkbox" name="vis_${k}" ${e.visibility?.[k]!==false?'checked':''}> ${l}</label>`).join('')}</fieldset><button class="primary-action" type="submit">Salvar inimigo</button>${id?`<button class="danger-action" type="button" onclick="deleteEnemy('${id}')">Remover inimigo</button>`:''}</form></div>`)}
-async function saveEnemy(ev,id){ev.preventDefault();const f=new FormData(ev.target),visibility={};['name','hp','hp_numbers','conditions','defense','dodge','block','movement'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on');const payload={battle_id:activeBattle.id,name:f.get('name')||'Inimigo',hp_current:+f.get('hp_current')||0,hp_max:+f.get('hp_max')||0,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),visibility};const q=id?supabaseClient.from('battle_enemies').update(payload).eq('id',id):supabaseClient.from('battle_enemies').insert(payload);const {error}=await q;if(error)alert(error.message);else{document.getElementById('enemy-editor')?.remove();scheduleCombatSync(50)}}
+function openEnemyEditor(id){const e=battleEnemies.find(x=>x.id===id)||{visibility:{name:true,hp:true,hp_numbers:false,conditions:true,defense:false,dodge:false,block:false,movement:true,attacks:false,abilities:false},conditions:[],attacks:[],abilities:[]};document.body.insertAdjacentHTML('beforeend',`<div id="enemy-editor" class="picker-modal"><button class="picker-backdrop" onclick="document.getElementById('enemy-editor').remove()"></button><form class="picker-panel enemy-editor" onsubmit="saveEnemy(event,'${id||''}')"><div class="picker-head"><div><span class="section-eyebrow">INIMIGO</span><h3>${id?'Editar':'Adicionar'} inimigo</h3></div><button type="button" onclick="document.getElementById('enemy-editor').remove()">✕</button></div><label>Nome<input name="name" value="${escapeAttr(e.name||'')}"></label><label>Subtítulo<input name="subtitle" value="${escapeAttr(e.subtitle||'')}"></label><label>URL da imagem<input name="image_url" value="${escapeAttr(e.image_url||'')}"></label><div class="enemy-form-grid"><label>PV atual<input name="hp_current" type="number" value="${e.hp_current??10}"></label><label>PV máximo<input name="hp_max" type="number" value="${e.hp_max??10}"></label><label>Defesa<input name="defense" type="number" value="${e.defense??10}"></label><label>Esquiva<input name="dodge" type="number" value="${e.dodge??0}"></label><label>Bloqueio<input name="block" type="number" value="${e.block??0}"></label><label>Deslocamento<input name="movement_speed" type="number" value="${e.movement_speed??9}"></label></div><label>Condições (separadas por vírgula)<input name="conditions" value="${escapeAttr((e.conditions||[]).join(', '))}"></label><label>Ataques (um por linha)<textarea name="attacks">${escapeHtml((e.attacks||[]).join('\n'))}</textarea></label><label>Habilidades (uma por linha)<textarea name="abilities">${escapeHtml((e.abilities||[]).join('\n'))}</textarea></label><label>Notas privadas<textarea name="notes">${escapeHtml(e.notes||'')}</textarea></label><fieldset><legend>Visível para jogadores</legend>${[['name','Nome'],['hp','Barra de PV'],['hp_numbers','PV numérico'],['conditions','Condições'],['defense','Defesa'],['dodge','Esquiva'],['block','Bloqueio'],['movement','Deslocamento'],['attacks','Ataques'],['abilities','Habilidades']].map(([k,l])=>`<label class="check-row"><input type="checkbox" name="vis_${k}" ${e.visibility?.[k]!==false?'checked':''}> ${l}</label>`).join('')}</fieldset><button class="primary-action" type="submit">Salvar inimigo</button>${id?`<button class="danger-action" type="button" onclick="deleteEnemy('${id}')">Remover inimigo</button>`:''}</form></div>`)}
+async function saveEnemy(ev,id){ev.preventDefault();const f=new FormData(ev.target),visibility={};['name','hp','hp_numbers','conditions','defense','dodge','block','movement','attacks','abilities'].forEach(k=>visibility[k]=f.get('vis_'+k)==='on');const lines=name=>String(f.get(name)||'').split('\n').map(x=>x.trim()).filter(Boolean);const payload={battle_id:activeBattle.id,name:f.get('name')||'Inimigo',subtitle:f.get('subtitle')||'',image_url:f.get('image_url')||'',hp_current:+f.get('hp_current')||0,hp_max:+f.get('hp_max')||0,defense:+f.get('defense')||0,dodge:+f.get('dodge')||0,block:+f.get('block')||0,movement_speed:+f.get('movement_speed')||0,conditions:String(f.get('conditions')||'').split(',').map(x=>x.trim()).filter(Boolean),attacks:lines('attacks'),abilities:lines('abilities'),notes:f.get('notes')||'',visibility};const q=id?supabaseClient.from('battle_enemies').update(payload).eq('id',id):supabaseClient.from('battle_enemies').insert(payload);const {error}=await q;if(error)alert(error.message);else{document.getElementById('enemy-editor')?.remove();await logBattle(`${payload.name} ${id?'foi atualizado':'entrou no combate'}`,'enemy');scheduleCombatSync(50)}}
 async function deleteEnemy(id){if(!confirm('Remover este inimigo?'))return;await supabaseClient.from('battle_enemies').delete().eq('id',id);document.getElementById('enemy-editor')?.remove();scheduleCombatSync(50)}
 async function changeEnemyHp(id,d){const e=battleEnemies.find(x=>x.id===id);if(!e)return;await supabaseClient.from('battle_enemies').update({hp_current:Math.max(0,(e.hp_current||0)+d)}).eq('id',id)}
 window.startBattle=startBattle;window.endBattle=endBattle;window.advanceRound=advanceRound;window.openEnemyEditor=openEnemyEditor;window.saveEnemy=saveEnemy;window.deleteEnemy=deleteEnemy;window.changeEnemyHp=changeEnemyHp;
@@ -1082,6 +1380,8 @@ async function initUser() {
   }
 
   currentRole = profile.role;
+  currentProfile = profile;
+  subscribeSessionPresence(profile);
 
   document.getElementById('user-label').textContent =
     currentRole === 'admin'
@@ -1688,3 +1988,5 @@ document.addEventListener('click', (event) => {
     window.openRuleById(ruleId);
   }
 });
+
+window.loadMasterHub = loadMasterHub;

@@ -198,3 +198,224 @@ LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$
   WHERE e.battle_id=p_battle_id ORDER BY e.sort_order,e.created_at;
 $$;
 GRANT EXECUTE ON FUNCTION public.get_battle_enemies(uuid) TO authenticated;
+
+-- ============================================================
+-- CENTRAL DO MESTRE: CONDICOES, BESTIARIO, NOTAS, INICIATIVA E LOG
+-- ============================================================
+
+ALTER TABLE public.characters
+  ADD COLUMN IF NOT EXISTS conditions jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+ALTER TABLE public.battles
+  ADD COLUMN IF NOT EXISTS turn_order jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS turn_index integer NOT NULL DEFAULT 0;
+
+-- Bestiario privado do mestre
+CREATE TABLE IF NOT EXISTS public.enemy_templates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name text NOT NULL DEFAULT 'Inimigo',
+  subtitle text,
+  image_url text,
+  hp_max integer NOT NULL DEFAULT 10,
+  defense integer DEFAULT 10,
+  dodge integer DEFAULT 0,
+  block integer DEFAULT 0,
+  movement_speed numeric DEFAULT 9,
+  conditions jsonb NOT NULL DEFAULT '[]'::jsonb,
+  attacks jsonb NOT NULL DEFAULT '[]'::jsonb,
+  abilities jsonb NOT NULL DEFAULT '[]'::jsonb,
+  notes text NOT NULL DEFAULT '',
+  visibility jsonb NOT NULL DEFAULT '{"name":true,"hp":true,"hp_numbers":false,"conditions":true,"defense":false,"dodge":false,"block":false,"movement":true}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.enemy_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin read own enemy templates" ON public.enemy_templates;
+CREATE POLICY "admin read own enemy templates" ON public.enemy_templates FOR SELECT TO authenticated
+USING (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+DROP POLICY IF EXISTS "admin manage own enemy templates" ON public.enemy_templates;
+CREATE POLICY "admin manage own enemy templates" ON public.enemy_templates FOR ALL TO authenticated
+USING (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'))
+WITH CHECK (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+
+-- Notas privadas, uma por conta de mestre
+CREATE TABLE IF NOT EXISTS public.gm_notes (
+  owner_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  content text NOT NULL DEFAULT '',
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.gm_notes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "gm owns notes" ON public.gm_notes;
+CREATE POLICY "gm owns notes" ON public.gm_notes FOR ALL TO authenticated
+USING (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'))
+WITH CHECK (owner_id=auth.uid() AND EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+
+-- Historico privado do mestre para a batalha ativa
+CREATE TABLE IF NOT EXISTS public.battle_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  battle_id uuid NOT NULL REFERENCES public.battles(id) ON DELETE CASCADE,
+  message text NOT NULL,
+  kind text NOT NULL DEFAULT 'info',
+  created_by uuid REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.battle_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "admin read battle log" ON public.battle_log;
+CREATE POLICY "admin read battle log" ON public.battle_log FOR SELECT TO authenticated
+USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+DROP POLICY IF EXISTS "admin manage battle log" ON public.battle_log;
+CREATE POLICY "admin manage battle log" ON public.battle_log FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin'));
+
+-- Controle rapido seguro de PV/PD pelo mestre
+CREATE OR REPLACE FUNCTION public.master_adjust_character(
+  p_user_id uuid,
+  p_resource text,
+  p_delta integer
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=public
+AS $$
+DECLARE
+  v_row public.characters%ROWTYPE;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin') THEN
+    RAISE EXCEPTION 'Apenas administradores podem usar esta funcao';
+  END IF;
+
+  IF p_resource = 'hp' THEN
+    UPDATE public.characters
+    SET hp_current = GREATEST(0, LEAST(COALESCE(hp_max,0), COALESCE(hp_current,0) + p_delta))
+    WHERE user_id=p_user_id RETURNING * INTO v_row;
+  ELSIF p_resource = 'pd' THEN
+    UPDATE public.characters
+    SET energy_current = GREATEST(0, LEAST(COALESCE(energy_max,0), COALESCE(energy_current,0) + p_delta))
+    WHERE user_id=p_user_id RETURNING * INTO v_row;
+  ELSE
+    RAISE EXCEPTION 'Recurso invalido';
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'hp_current', v_row.hp_current,
+    'energy_current', v_row.energy_current,
+    'updated_at', v_row.updated_at
+  );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.master_adjust_character(uuid,text,integer) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.master_set_character_conditions(
+  p_user_id uuid,
+  p_conditions jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path=public
+AS $$
+DECLARE
+  v_updated timestamptz;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin') THEN
+    RAISE EXCEPTION 'Apenas administradores podem usar esta funcao';
+  END IF;
+  IF jsonb_typeof(COALESCE(p_conditions,'[]'::jsonb)) <> 'array' THEN
+    RAISE EXCEPTION 'conditions deve ser um array JSON';
+  END IF;
+
+  UPDATE public.characters
+  SET conditions=COALESCE(p_conditions,'[]'::jsonb)
+  WHERE user_id=p_user_id
+  RETURNING updated_at INTO v_updated;
+
+  RETURN jsonb_build_object('ok',true,'updated_at',v_updated);
+END;
+$$;
+GRANT EXECUTE ON FUNCTION public.master_set_character_conditions(uuid,jsonb) TO authenticated;
+
+-- Recria o resumo do mestre incluindo as condicoes atuais.
+DROP FUNCTION IF EXISTS public.get_master_shield_data();
+CREATE FUNCTION public.get_master_shield_data()
+RETURNS TABLE (
+  user_id uuid, name text, player_name text, origin text, class_name text, archetype text,
+  avatar_url text, level integer, hp_current integer, hp_max integer,
+  energy_current integer, energy_max integer, resonance_points integer,
+  damage_reduction integer, defense integer, dodge integer, block integer,
+  movement_speed numeric, strength integer, dexterity integer, intelligence integer,
+  presence integer, constitution integer, skills jsonb, attacks jsonb, conditions jsonb,
+  updated_at timestamptz
+)
+LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$
+  SELECT c.user_id, c.name, c.player_name, c.origin, c.class_name, c.archetype,
+    c.avatar_url, c.level, c.hp_current, c.hp_max, c.energy_current, c.energy_max,
+    COALESCE(c.resonance_points, 3), COALESCE(c.damage_reduction, 0),
+    COALESCE(c.defense, 10), COALESCE(c.dodge, 0), COALESCE(c.block, 0),
+    COALESCE(c.movement_speed, 9), COALESCE(c.strength, 0), COALESCE(c.dexterity, 0),
+    COALESCE(c.intelligence, 0), COALESCE(c.presence, 0), COALESCE(c.constitution, 0),
+    COALESCE(c.skills, '{}'::jsonb), COALESCE(c.attacks, '[]'::jsonb),
+    COALESCE(c.conditions, '[]'::jsonb), c.updated_at
+  FROM public.characters c
+  ORDER BY c.name NULLS LAST;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_master_shield_data() TO authenticated;
+
+-- Dados detalhados de inimigos usados pelo bestiario/combate.
+ALTER TABLE public.battle_enemies
+  ADD COLUMN IF NOT EXISTS attacks jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS abilities jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT '';
+
+DROP FUNCTION IF EXISTS public.get_battle_enemies(uuid);
+CREATE FUNCTION public.get_battle_enemies(p_battle_id uuid)
+RETURNS TABLE (
+  id uuid, battle_id uuid, name text, subtitle text, image_url text,
+  hp_current integer, hp_max integer, defense integer, dodge integer, block integer,
+  movement_speed numeric, conditions jsonb, visibility jsonb, sort_order integer,
+  attacks jsonb, abilities jsonb, notes text
+)
+LANGUAGE sql SECURITY DEFINER SET search_path=public AS $$
+  WITH me AS (
+    SELECT EXISTS(SELECT 1 FROM public.profiles p WHERE p.id=auth.uid() AND p.role='admin') AS is_admin
+  )
+  SELECT e.id,e.battle_id,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.name ELSE 'Inimigo desconhecido' END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.subtitle ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'name')::boolean,true) THEN e.image_url ELSE NULL END,
+    CASE
+      WHEN me.is_admin OR COALESCE((e.visibility->>'hp_numbers')::boolean,false) THEN e.hp_current
+      WHEN COALESCE((e.visibility->>'hp')::boolean,true) THEN ROUND(100.0 * e.hp_current / GREATEST(e.hp_max,1))::integer
+      ELSE NULL END,
+    CASE
+      WHEN me.is_admin OR COALESCE((e.visibility->>'hp_numbers')::boolean,false) THEN e.hp_max
+      WHEN COALESCE((e.visibility->>'hp')::boolean,true) THEN 100
+      ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'defense')::boolean,false) THEN e.defense ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'dodge')::boolean,false) THEN e.dodge ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'block')::boolean,false) THEN e.block ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'movement')::boolean,true) THEN e.movement_speed ELSE NULL END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'conditions')::boolean,true) THEN e.conditions ELSE '[]'::jsonb END,
+    CASE WHEN me.is_admin THEN e.visibility ELSE jsonb_build_object(
+      'name',COALESCE((e.visibility->>'name')::boolean,true),
+      'hp',COALESCE((e.visibility->>'hp')::boolean,true),
+      'hp_numbers',COALESCE((e.visibility->>'hp_numbers')::boolean,false),
+      'conditions',COALESCE((e.visibility->>'conditions')::boolean,true),
+      'defense',COALESCE((e.visibility->>'defense')::boolean,false),
+      'dodge',COALESCE((e.visibility->>'dodge')::boolean,false),
+      'block',COALESCE((e.visibility->>'block')::boolean,false),
+      'movement',COALESCE((e.visibility->>'movement')::boolean,true),
+      'attacks',COALESCE((e.visibility->>'attacks')::boolean,false),
+      'abilities',COALESCE((e.visibility->>'abilities')::boolean,false)
+    ) END,
+    e.sort_order,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'attacks')::boolean,false) THEN e.attacks ELSE '[]'::jsonb END,
+    CASE WHEN me.is_admin OR COALESCE((e.visibility->>'abilities')::boolean,false) THEN e.abilities ELSE '[]'::jsonb END,
+    CASE WHEN me.is_admin THEN e.notes ELSE NULL END
+  FROM public.battle_enemies e CROSS JOIN me
+  WHERE e.battle_id=p_battle_id ORDER BY e.sort_order,e.created_at;
+$$;
+GRANT EXECUTE ON FUNCTION public.get_battle_enemies(uuid) TO authenticated;
