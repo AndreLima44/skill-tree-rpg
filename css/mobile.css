@@ -272,4 +272,7 @@
 
 /* origem: themes.css */
 .master-center{padding:9px 7px 82px}.master-center-header{align-items:flex-start}.master-center-header p{display:none}.master-center-header .primary-action{padding:7px 9px}.master-center-nav{margin-left:-7px;margin-right:-7px;padding-left:7px;padding-right:7px}.master-dashboard-grid{grid-template-columns:1fr}.master-panel,.master-session-panel,.master-log-panel{grid-column:1}.master-stat-grid{grid-template-columns:repeat(3,1fr)}.master-turn-box{align-items:flex-start;flex-wrap:wrap}.master-turn-box>strong{min-width:50%}.master-turn-box>div{width:100%}.master-turn-box button{flex:1}.master-player-grid,.bestiary-grid,.master-rule-grid{grid-template-columns:1fr}.master-notes-textarea{min-height:55vh}.master-player-resources,.bestiary-stats{grid-template-columns:repeat(4,1fr)}.bestiary-editor{width:min(96vw,520px)}
+
+  /* Livro de Regras V4 */
+  .rule-quick-answer{padding:12px}.rule-quick-answer-head{display:block}.rule-quick-answer-head>button{margin-top:10px;width:100%}.rule-result-grid{grid-template-columns:1fr}.rule-quick-summary{font-size:12px}.rule-result-filters{margin-left:-4px;margin-right:-4px}.rule-quick-related{gap:4px}
 }

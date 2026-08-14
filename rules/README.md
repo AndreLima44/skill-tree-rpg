@@ -20,11 +20,14 @@ Gerada a partir do livro enviado. O objetivo é funcionar como uma base de conhe
 - `abilities-rules.js` — 115 habilidades extraídas e estruturadas das seções Universal, Fogo, Água, Terra, Vento, Energia, Frio e Força Inata.
 - `combo-rules.js` — relações condição ↔ habilidades que aplicam/aproveitam.
 - `review-issues.js` — ambiguidades e inconsistências que precisam de revisão humana.
-- `index.js` — agrega tudo e fornece busca ponderada por título, alias, keyword e conteúdo.
+- `index.js` — agrega tudo e fornece busca por intenção, aliases, perguntas, mecânicas e fuzzy fallback.
+- `../scripts/build-rules-bundle.mjs` — gera automaticamente o bundle usado pelo site a partir desta base.
 
 ## Busca
 `searchRules('esquiva')` prioriza a regra Esquiva, em vez de simples ocorrências textuais.
-`searchRules('desviar')` também encontra Esquiva por palavra-chave.
+`searchRules('desviar')` encontra Esquiva por alias conceitual.
+`searchRules('como funciona esquiva')` entende a pergunta e prioriza Esquiva.
+`searchRules('ressonansia')` usa fuzzy fallback para tolerar erro de digitação.
 `searchRules('reduzir dano')` prioriza RD.
 `searchRules('pontos de magia')` aponta para PR por alias.
 

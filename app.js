@@ -362,42 +362,82 @@ function linkifyRules(text='') {
 let ruleHistory=[];
 let rulesSearchTimer=null;
 function ruleCategoryLabel(category){ return getRuleBook()?.categories?.[category] || category || 'Regra'; }
+function getRuleSearchContext(){
+  const data = characterData || {};
+  return [data.class_name, data.archetype, data.origin, data.element, data.trail]
+    .filter(Boolean)
+    .map(String);
+}
 function renderRulesPage(){
  const book=getRuleBook();
  if(!book) return `<section class="rulebook-shell"><p class="rules-empty">Carregando Livro de Regras...</p></section>`;
  const categories=Object.entries(book.categories||{});
- const popular=['pr','rd','ressonancia','esquiva','congelado','imobilizado','vanguarda','combo'];
+ const popular=['pr','rd','ressonancia','esquiva','congelado','imobilizado','contra-ataque','pontos-de-ressonancia'];
  return `<section class="rulebook-shell">
-   <header class="rulebook-header"><div><div class="rules-eyebrow">ELEMENTO DO FRIO</div><h1>📚 Livro de Regras</h1><p>Consulte regras, condições, habilidades, classes, trilhas e combos sem sair da sessão.</p></div></header>
-   <div class="rule-search"><input id="rules-search" type="search" autocomplete="off" placeholder="Pesquisar uma regra, condição, habilidade, classe..." oninput="scheduleRuleSearch(this.value)"></div>
-   <div class="rule-category-row">${categories.map(([id,label])=>`<button class="rule-category-chip" onclick="filterRulesCategory('${id}')">${escapeHtml(label)}</button>`).join('')}</div>
-   <div class="rulebook-popular"><span>Mais usadas:</span>${popular.map(id=>{const r=book.getById(id);return r?`<button data-rule-id="${id}">${escapeHtml(r.title)}</button>`:''}).join('')}</div>
-   <div id="rules-results" class="rules-results"><p class="rules-empty">Pesquise um termo ou escolha uma categoria.</p></div>
+   <header class="rulebook-header"><div><div class="rules-eyebrow">ELEMENTO DO FRIO</div><h1>📚 Livro de Regras</h1><p>Pesquise como você perguntaria durante a sessão: “como funciona esquiva?”, “o que reduz movimento?” ou “o que combina com Congelado?”.</p></div></header>
+   <div class="rule-search"><input id="rules-search" type="search" autocomplete="off" placeholder="Pergunte uma regra, condição, habilidade ou efeito..." oninput="scheduleRuleSearch(this.value)"></div>
+   <div class="rule-category-row"><button class="rule-category-chip active" data-rule-category="all" onclick="filterRulesCategory('all')">Todos</button>${categories.map(([id,label])=>`<button class="rule-category-chip" data-rule-category="${id}" onclick="filterRulesCategory('${id}')">${escapeHtml(label)}</button>`).join('')}</div>
+   <div class="rulebook-popular"><span>Consultas rápidas:</span>${popular.map(id=>{const r=book.getById(id);return r?`<button data-rule-id="${id}">${escapeHtml(r.title)}</button>`:''}).join('')}</div>
+   <div id="rules-results" class="rules-results rules-results-smart"><div class="rules-search-start"><strong>Busque por nome ou por dúvida.</strong><span>A busca considera título, aliases, palavras-chave, mecânicas, erros de digitação e relações entre tópicos.</span></div></div>
  </section>`;
 }
-function scheduleRuleSearch(query){ clearTimeout(rulesSearchTimer); rulesSearchTimer=setTimeout(()=>searchRules(query),180); }
+function scheduleRuleSearch(query){ clearTimeout(rulesSearchTimer); rulesSearchTimer=setTimeout(()=>searchRules(query),150); }
+function renderRuleResultCard(result){
+ const book=getRuleBook(); const rule=result.rule;
+ const related=book.getRelated(rule.id).slice(0,3);
+ return `<button class="rule-result-card" data-rule-id="${rule.id}">
+   <span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span>
+   <strong>${escapeHtml(rule.title)}</strong>
+   <p>${escapeHtml(rule.summary||'')}</p>
+   <div class="rule-match-reason">Encontrado em: ${escapeHtml(result.matchReason||'conteúdo relacionado')}</div>
+   ${related.length?`<div class="rule-card-related">${related.map(r=>`<span>${escapeHtml(r.title)}</span>`).join('')}</div>`:''}
+   ${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}
+ </button>`;
+}
+function renderRuleQuickAnswer(query,analysis){
+ const book=getRuleBook(); const top=analysis?.top; if(!top)return'';
+ const answer=book.buildQuickAnswer(top.rule,query); if(!answer)return'';
+ return `<article class="rule-quick-answer">
+   <div class="rule-quick-answer-head"><div><span class="rule-kicker">RESPOSTA RÁPIDA • ${escapeHtml(ruleCategoryLabel(answer.category))}</span><h2>${escapeHtml(answer.title)}</h2></div><button data-rule-id="${top.rule.id}">Ver regra completa →</button></div>
+   <p class="rule-quick-summary">${linkifyRules(answer.summary||'')}</p>
+   ${answer.mechanics?.length?`<div class="rule-quick-mechanics"><strong>Principais pontos</strong><ul>${answer.mechanics.map(m=>`<li>${linkifyRules(m)}</li>`).join('')}</ul></div>`:''}
+   ${answer.related?.length?`<div class="rule-quick-related"><span>Relacionado:</span>${answer.related.map(r=>`<button data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div>`:''}
+   ${answer.status==='needs-review'?`<div class="rule-status-review">⚠ Esta regra possui um ponto pendente de revisão.${answer.note?` ${escapeHtml(answer.note)}`:''}</div>`:''}
+ </article>`;
+}
+function renderRuleResultFilters(analysis){
+ const book=getRuleBook(); const counts=analysis?.categoryCounts||{}; const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+ if(!entries.length)return'';
+ return `<div class="rule-result-filters"><span>${analysis.results.length} resultado${analysis.results.length===1?'':'s'}</span><button class="active" onclick="searchRules(document.getElementById('rules-search')?.value||'')">Todos</button>${entries.slice(0,7).map(([id,count])=>`<button onclick="searchRules(document.getElementById('rules-search')?.value||'',{category:'${id}'})">${escapeHtml(book.categories[id]||id)} <b>${count}</b></button>`).join('')}</div>`;
+}
 function searchRules(query='',options={}){
  const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
- const q=String(query).trim(); if(!q){box.innerHTML='<p class="rules-empty">Digite uma regra para pesquisar.</p>';return;}
- const results=book.search(q,{...options,limit:30})||[];
- box.innerHTML=results.length?results.map(({rule})=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p><div class="rule-card-related">${book.getRelated(rule.id).slice(0,4).map(r=>`<span>${escapeHtml(r.title)}</span>`).join('')}</div>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join(''):'<p class="rules-empty">Nenhuma regra encontrada.</p>';
+ const q=String(query).trim();
+ if(!q){box.innerHTML='<div class="rules-search-start"><strong>Busque por nome ou por dúvida.</strong><span>Ex.: “como funciona esquiva?”, “reduzir dano”, “habilidades que usam congelado”.</span></div>';return;}
+ const analysis=book.analyze(q,{...options,limit:30,contextTerms:getRuleSearchContext()});
+ const results=analysis.results||[];
+ if(!results.length){box.innerHTML=`<div class="rules-empty-smart"><strong>Nenhuma regra encontrada.</strong><span>Tente um termo mais curto, um sinônimo ou confira a escrita.</span></div>`;return;}
+ const rest=results.slice(1);
+ box.innerHTML=`${renderRuleQuickAnswer(q,analysis)}${renderRuleResultFilters(analysis)}${rest.length?`<section class="rule-other-results"><h3>Outros resultados relacionados</h3><div class="rule-result-grid">${rest.map(renderRuleResultCard).join('')}</div></section>`:''}`;
 }
 function filterRulesCategory(category){
+ document.querySelectorAll('[data-rule-category]').forEach(b=>b.classList.toggle('active',category==='all'?b.dataset.ruleCategory==='all':b.dataset.ruleCategory===category));
  const box=document.getElementById('rules-results'),book=getRuleBook(); if(!box||!book)return;
+ if(category==='all'){box.innerHTML='<div class="rules-search-start"><strong>Todas as categorias disponíveis.</strong><span>Digite uma dúvida acima para receber uma resposta rápida ou escolha outra categoria para navegar.</span></div>';return;}
  const rules=book.getByCategory(category)||[];
- box.innerHTML=rules.map(rule=>`<button class="rule-result-card" data-rule-id="${rule.id}"><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><strong>${escapeHtml(rule.title)}</strong><p>${escapeHtml(rule.summary||'')}</p>${rule.status==='needs-review'?'<span class="rule-status-review">⚠ Pendente de revisão</span>':''}</button>`).join('')||'<p class="rules-empty">Nenhuma regra nesta categoria.</p>';
+ box.innerHTML=`<div class="rule-category-browser"><div class="rule-category-browser-head"><strong>${escapeHtml(ruleCategoryLabel(category))}</strong><span>${rules.length} tópico${rules.length===1?'':'s'}</span></div><div class="rule-result-grid">${rules.map(rule=>renderRuleResultCard({rule,matchReason:'Categoria'})).join('')}</div></div>`;
 }
 function openRuleById(id,push=true){
  const rule=getRule(id); if(!rule)return;
  if(push) ruleHistory.push(id);
  const main=document.getElementById('main-content'); if(!main)return;
- const book=getRuleBook(), related=book.getRelated(id)||[];
+ const book=getRuleBook(), grouped=book.getGroupedRelations?book.getGroupedRelations(id):null, related=book.getRelated(id)||[];
  const section=(title,content)=>content&&content.length?`<section class="rule-section"><h3>${title}</h3>${content}</section>`:'';
- // linkifyRules() já escapa o texto original e gera apenas os botões seguros
- // dos termos registrados. Portanto, não devemos escapar novamente aqui.
  const list=a=>`<ul>${a.map(x=>`<li>${x}</li>`).join('')}</ul>`;
  const meta=[['Elemento',rule.element],['Grau',rule.grade],['Tipo',rule.type],['Ação',rule.action],['Alcance',rule.range],['Duração',rule.duration],['Pré-requisito',rule.prerequisite]].filter(x=>x[1]);
- main.innerHTML=`<section class="rule-detail"><div class="rule-breadcrumb"><button onclick="backFromRule()">← Voltar</button><span>Livro de Regras › ${escapeHtml(ruleCategoryLabel(rule.category))} › ${escapeHtml(rule.title)}</span></div><div class="rule-detail-head"><div><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><h1>${escapeHtml(rule.title)}</h1><p>${escapeHtml(rule.summary||'')}</p></div>${rule.status==='needs-review'?'<div class="rule-status-review">⚠ Regra pendente de revisão</div>':''}</div>${meta.length?`<div class="rule-meta">${meta.map(([k,v])=>`<span><b>${k}:</b> ${escapeHtml(v)}</span>`).join('')}</div>`:''}${section('Como funciona',rule.description&&`<p>${linkifyRules(rule.description)}</p>`)}${section('Mecânica',rule.mechanics?.length?list(rule.mechanics.map(linkifyRules)): '')}${section('Exemplos',rule.examples?.length?list(rule.examples.map(linkifyRules)):'')}${section('Tags',rule.tags?.length?`<div class="rule-tags">${rule.tags.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>`:'')}${related.length?`<section class="rule-section"><h3>Relacionado</h3><div class="rule-related-list">${related.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div></section>`:''}${rule.note?`<section class="rule-section rule-review-note"><h3>Observação</h3><p>${escapeHtml(rule.note)}</p></section>`:''}</section>`;
+ const relationLabels={rules:'Regras relacionadas',conditions:'Condições relacionadas',abilities:'Habilidades relacionadas',classes:'Classes relacionadas',trails:'Trilhas relacionadas',elements:'Elementos relacionados',other:'Outros relacionados'};
+ const relationHtml=grouped?Object.entries(grouped).filter(([,items])=>items?.length).map(([key,items])=>`<div class="rule-relation-group"><span>${relationLabels[key]||'Relacionado'}</span><div class="rule-related-list">${items.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div></div>`).join(''):(related.length?`<div class="rule-related-list">${related.map(r=>`<button class="rule-related-item" data-rule-id="${r.id}">${escapeHtml(r.title)}</button>`).join('')}</div>`:'');
+ main.innerHTML=`<section class="rule-detail"><div class="rule-breadcrumb"><button onclick="backFromRule()">← Voltar</button><span>Livro de Regras › ${escapeHtml(ruleCategoryLabel(rule.category))} › ${escapeHtml(rule.title)}</span></div><div class="rule-detail-head"><div><span class="rule-kicker">${escapeHtml(ruleCategoryLabel(rule.category))}</span><h1>${escapeHtml(rule.title)}</h1><p>${escapeHtml(rule.summary||'')}</p></div>${rule.status==='needs-review'?'<div class="rule-status-review">⚠ Regra pendente de revisão</div>':''}</div>${meta.length?`<div class="rule-meta">${meta.map(([k,v])=>`<span><b>${k}:</b> ${escapeHtml(v)}</span>`).join('')}</div>`:''}${section('Como funciona',rule.description&&`<p>${linkifyRules(rule.description)}</p>`)}${section('Mecânica',rule.mechanics?.length?list(rule.mechanics.map(linkifyRules)): '')}${section('Exemplos',rule.examples?.length?list(rule.examples.map(linkifyRules)):'')}${section('Tags',rule.tags?.length?`<div class="rule-tags">${rule.tags.map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>`:'')}${relationHtml?`<section class="rule-section"><h3>Relacionado</h3>${relationHtml}</section>`:''}${rule.note?`<section class="rule-section rule-review-note"><h3>Observação</h3><p>${escapeHtml(rule.note)}</p></section>`:''}</section>`;
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function openRuleModal(term){ const book=getRuleBook(); if(!book)return; const found=(book.search(term,{limit:1})||[])[0]?.rule; if(found) openRuleById(found.id); }
